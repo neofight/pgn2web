@@ -6,11 +6,10 @@ pgn2web - Converts PGN files to interactive web pages
 
 0. Contents
 1. Introduction
-2. Known Issues
-3. Installation
-4. Usage
-5. Acknowledgements
-6. License Notice
+2. Installation
+3. Usage
+4. Acknowledgements
+5. License Notice
 
 1. Introduction
 ---------------
@@ -20,17 +19,11 @@ you to replay the game(s) within a web browser. This software is
 intended as a free cross-platform replacement for existing non-free
 conversion programs.
 
-2. Known Issues (version 0.2)
------------------------------
+This is only the third release, there may be many bugs but on the
+whole it should be fairly usable. Please email any bug reports,
+comments, or suggestions to whoggarth@users.sourceforge.net
 
-This is only the second release, there may be many bugs but on the
-whole it should be fairly usable. Currently, variations and comments
-are stripped out. Missing functionality and bugs will be corrected in
-future versions.
-
-Please email any bug reports, comments, or suggestions to me@whoggarth.com
-
-3. Installation
+2. Installation
 ---------------
 
 Linux
@@ -39,17 +32,14 @@ Linux
 The installation is fairly standard. Simply untar the archive, change
 to the resulting directory, type make, switch to root and type make install.
 
-4. Usage
+3. Usage
 --------
 
 The syntax for pgn2web is as follows:
 
 pgn2web <pgn file> <html file>
 
-Generates a html file for each game in the PGN file, and creates a
-folder containing the required images.
-
-5. Acknowledgements
+4. Acknowledgements
 -------------------
 
 Thanks to Simon Pittock of http://www.apexwebworks.co.uk for his help in
@@ -58,7 +48,7 @@ clearing up some javascript issues.
 See images/README.bitmaps for details on the origin of the images used
 by pgn2web.
 
-6. License Notice
+5. License Notice
 -----------------
 
 Copyright (C) 2004 William Hoggarth <email: me@whoggarth.com>
