@@ -66,20 +66,21 @@ typedef struct variation {
 
 /* constants */
 const char *piece_filenames[] = {"", "wp", "wn", "wb", "wr", "wq", "wk", "bp", "bn", "bb", "br", "bq", "bk"};
+const char *credit_html = "This page was created with <a href=\"http://pgn2web.sourceforge.net\" target=\"_top\">pgn2web</a>.";
 
 #ifdef DEBUG
-const char *const board_template = "templates" SEPERATOR_STRING "board.html";
-const char *const frame_template = "templates" SEPERATOR_STRING "frame.html";
-const char *const template_filename = "templates" SEPERATOR_STRING "template.html";
+const char *board_template = "templates" SEPERATOR_STRING "board.html";
+const char *frame_template = "templates" SEPERATOR_STRING "frame.html";
+const char *template_filename = "templates" SEPERATOR_STRING "template.html";
 #else
-const char *const board_template = INSTALL_PATH "templates" SEPERATOR_STRING "board.html";
-const char *const frame_template = INSTALL_PATH "templates" SEPERATOR_STRING "frame.html";
-const char *const template_filename = INSTALL_PATH "templates" SEPERATOR_STRING "template.html";
+const char *board_template = INSTALL_PATH "templates" SEPERATOR_STRING "board.html";
+const char *frame_template = INSTALL_PATH "templates" SEPERATOR_STRING "frame.html";
+const char *template_filename = INSTALL_PATH "templates" SEPERATOR_STRING "template.html";
 #endif
 
 /* function prototypes */
 void append_move(char *string, const MOVE *move, const POSITION *position);
-void create_board(const char *board_filename, const char *html_filename, const char *pieces, const char *game_list);
+void create_board(const char *board_filename, const char *html_filename, const char *pieces, const char *game_list, bool credit);
 void create_frame(const char* frame_filename, const char* html_filename); 
 void delete_variation(VARIATION *variation, char **moves, long int *moves_size);
 MOVE extract_coordinates(const char* algebraic);
@@ -158,7 +159,7 @@ int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, co
 #endif
 
   /* create board page & frameset */
-  create_board(board_template, html_filename, pieces, game_list);
+  create_board(board_template, html_filename, pieces, game_list, credit);
   create_frame(frame_template, html_filename);
 
   /* skip any whitespace (or garbage) */
@@ -244,7 +245,7 @@ void append_move(char *string, const MOVE *move, const POSITION *position)
 }
 
 /* creates board child frame from template */
-void create_board(const char* template_filename, const char *html_filename, const char* pieces, const char* game_list)
+void create_board(const char* template_filename, const char *html_filename, const char* pieces, const char* game_list, bool credit)
 {
   char *filename;
   char buffer[256];
@@ -281,6 +282,15 @@ void create_board(const char* template_filename, const char *html_filename, cons
     if(!strstr(buffer, "/>")) {
       fprintf(board, "%s", buffer);
       continue;
+    }
+	  
+    if((tag = strstr(buffer, "<credit/>"))) {
+      *tag = '\0';
+      fprintf(board, "%s", buffer);
+      if(credit) {
+        fprintf(board, credit_html);
+      }
+      fprintf(board, "%s", tag + strlen("<credit/>"));
     }
 
     if((tag = strstr(buffer, "<pieces/>"))) {
