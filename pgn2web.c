@@ -999,6 +999,7 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
   long int notation_size;
 
   BOOL in_comment = FALSE;
+  BOOL left_comment = FALSE;
   BOOL left_variation = FALSE;
   BOOL entered_variation = FALSE;
   char move[256];
@@ -1031,12 +1032,13 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
   /* allocate notation buffer */
   notation_size = 8192;
   *notation = (char*)calloc(notation_size, sizeof(char));
-  strcpy(*notation, "");
+  strcpy(*notation, "<b>");
 
   /* parse move text */
   while(current) {
     /* fetch next token */
     if(fscanf(pgn, "%s", token) != 1) {
+      strcat(*notation, "</b>");
       strcat(current->buffer, "-1,-1,-1,-1);\n"); /* exit loop if none */
       break;
     }
@@ -1071,6 +1073,7 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 	  strcpy(temp, temp_pointer);
 	  strcpy(token, temp);
 	  in_comment = FALSE;
+	  left_comment = TRUE;
 	  continue;
 	}
 	else {
@@ -1083,6 +1086,9 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 
       /* Start of a comment? */
       if(token[0] == '{') {
+	if(current->id == 0) {
+	  strcat(*notation, "</b>");
+	}
 	strcat(*notation, "\n");
 	strcpy(temp, token + 1);
 	strcpy(token, temp);
@@ -1121,6 +1127,9 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
       if(token[0] == '(') {
 	strcpy(temp, token + 1);
 	strcpy(token, temp);
+	if(current->id == 0) {
+	  strcat(*notation, "</b>");
+	}
 	if(!entered_variation) {
 	  strcat(*notation, "\n");
 	}
@@ -1160,6 +1169,7 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 	/* make current variation */
 	current = new;
 	entered_variation = TRUE;
+	left_comment = FALSE;
 	left_variation = FALSE;
 	continue;
       }
@@ -1175,7 +1185,6 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 	  strcat(current->buffer, "-1,-1,-1,-1);\n");
 	  current = current->parent;
 	}
-
 	entered_variation = FALSE;
 	left_variation = TRUE;
 	continue;
@@ -1207,19 +1216,20 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 #endif
 
       /* convert move */
-      if(!entered_variation) {
+      if(!entered_variation || left_comment) {
 	strcat(*notation, "\n");
+      }
+
+      if(current->id == 0 && (left_comment || left_variation)) {
+	strcat(*notation, "<p><b>");
       }
 
       if(current->to_play == WHITE) {
 	sprintf(*notation + strlen(*notation), "%d.", (current->actual_move + 1) / 2);
       }
       else {
-	if(current->relative_move == 1) {
+	if(current->relative_move == 1 || left_variation) {
 	  sprintf(*notation + strlen(*notation), "%d... ", (current->actual_move + 1) / 2);
-	}
-	if(left_variation) {
-	  strcat(*notation, "... ");
 	}
       } 
 
@@ -1235,6 +1245,7 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 	}
       }
       make_move(movepair, current->board);
+      left_comment = FALSE;
       left_variation = FALSE;
       entered_variation = FALSE;
       current->actual_move++;
