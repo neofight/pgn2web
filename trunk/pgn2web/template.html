@@ -63,9 +63,12 @@ bbk.src = "images/bbk.gif";
 
 //data
 <initial/>
+parents = new Array();
+moves = new Array();
 <moves/>
 
 //initial/current position
+var variation = 0;
 var move = 0;
 var flipped = false;
 <current/>
@@ -101,8 +104,8 @@ function flip()
 
 function domove()
 {
-  var source = moves[move * 4];
-  var destination = moves[move * 4 + 1];
+  var source = moves[variation][move * 4];
+  var destination = moves[variation][move * 4 + 1];
 
   if(source < 0)
   {
@@ -118,13 +121,13 @@ function domove()
   board[destination] = board[source];
   board[source] = 0;
 
-  if(moves[move * 4 + 2] < -1)
+  if(moves[variation][move * 4 + 2] < -1)
   {
-    board[destination] = - moves[move * 4 + 2];
+    board[destination] = - moves[variation][move * 4 + 2];
   }
 
-  source = moves[move * 4 + 2];
-  destination = moves[move * 4 + 3];
+  source = moves[variation][move * 4 + 2];
+  destination = moves[variation][move * 4 + 3];
 
   if(flipped)
   {
@@ -141,12 +144,32 @@ function domove()
   move++;
 }
 
-function jumpto(target)
+function jumpto(target_variation, target_move)
 { 
+  var route;
   unhighlight();
   reset();
 
-  while(move != target) {
+  while(variation != target_variation)
+  {
+    route = target_variation;
+
+    while(parents[route][0] != variation)
+    {
+      route = parents[route][0];
+    }
+
+    while(move != parents[route][1])
+    {
+      domove();
+    }
+
+    variation = route;
+    move = 0;
+  }
+
+  while(move != target_move)
+  {
     domove();
   }
 
@@ -155,6 +178,7 @@ function jumpto(target)
 
 function reset()
 {
+  variation = 0;
   move = 0;
 
   for(square = 0; square < 64; square++)
@@ -174,7 +198,7 @@ function unhighlight()
 {
   if(move > 0)
   {
-    document.getElementById("m" + move).style.background = "white";
+    document.getElementById("v" + variation + "m" + move).style.background = "white";
   }
 }
 
@@ -187,7 +211,7 @@ function update()
 
   if(move != 0)
   {
-    document.getElementById("m" + move).style.background = "silver";
+    document.getElementById("v" + variation + "m" + move).style.background = "silver";
   }
 }
 
@@ -200,10 +224,20 @@ function first()
 
 function backward()
 {
-  unhighlight();
-  if(move > 0)
+  if(move > 1)
   {
-    jumpto(move - 1);
+    jumpto(variation, move - 1);
+  }
+  else
+  {
+    if(parents[variation][0] == -1)
+    {
+      jumpto(0, 0);
+    }
+    else
+    {
+      jumpto(parents[variation][0], parents[variation][1]);
+    }
   }
 }
 
@@ -217,7 +251,7 @@ function forward()
 function last()
 {
   unhighlight();
-  while(moves[move * 4] != -1)
+  while(moves[variation][move * 4] != -1)
   {
     domove();
   }
