@@ -160,18 +160,19 @@ int main(int argc, char *argv[])
   }
 
 #ifdef WINDOWS
-  strcpy(command, "MD ");
+  strcpy(command, "MD \"");
   strcat(command, path);
-  strcat(command, "images");
+  strcat(command, "images\"");
   system(command);
 
-  strcpy(command, "COPY " INSTALL_PATH "images ");
+  strcpy(command, "COPY \"" INSTALL_PATH "images\" \"");
   strcat(command, path);
-  strcat(command, "images");
+  strcat(command, "images\"");
   system(command);
 #else
-  strcpy(command, "cp -r " INSTALL_PATH "images ");
+  strcpy(command, "cp -r \"" INSTALL_PATH "images\" \"");
   strcat(command, path);
+  strcat(command, "\"");
   system(command);
 #endif
 
