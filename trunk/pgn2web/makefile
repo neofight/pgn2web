@@ -3,7 +3,7 @@ pgn2web: pgn2web.c
 
 clean:
 	rm pgn2web
-	rm *[0-9]*.html
+	rm *.html
 
 debug: pgn2web.c
 	gcc -DDEBUG -Wall -g -o pgn2web pgn2web.c
@@ -11,7 +11,7 @@ debug: pgn2web.c
 install:
 	if [ ! -e /usr/local/pgn2web ]; then mkdir /usr/local/pgn2web; fi
 	cp -r images /usr/local/pgn2web/
-	cp template.html /usr/local/pgn2web/
+	cp -r templates /usr/local/pgn2web/
 	cp pgn2web /usr/local/pgn2web/
 	ln -fs /usr/local/pgn2web/pgn2web /usr/bin/
 
