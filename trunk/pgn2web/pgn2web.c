@@ -419,6 +419,12 @@ MOVEPAIR convert_move(const char* algebraic, COLOUR turn, const PIECE board[8][8
   /* add destination square and any qualifying rows or columns */
   movepair.move_1 = extract_coordinates(algebraic);
 
+  /* make sure a move is being examined by checking for valid co-ordinates  */
+  if(movepair.move_1.to_col == -1) {
+    movepair.move_2 = movepair.move_1;
+    return movepair;
+  }
+
   /* process pawn moves */
   if(piece == WPAWN || piece == BPAWN) {
     movepair =  get_pawn_move(movepair.move_1, turn, board);
@@ -542,6 +548,14 @@ MOVE extract_coordinates(const char* algebraic)
 	move.from_row = '8' - algebraic[i];
       }
     }
+  }
+
+  /* check for error by looking for invalid values */
+  if(move.to_col < 0 || move.to_col > 7 || move.to_row < 0 || move.to_row > 7) {
+    move.from_col = -1;
+    move.from_row = -1;
+    move.to_col = -1;
+    move.to_row = -1;
   }
 
   return move;
@@ -1171,7 +1185,8 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
   /* parse move text */
   while(current) {
     /* fetch next token */
-    if(fscanf(pgn, "%s", token) != 1) {
+    token[255] = '\0';
+    if(fscanf(pgn, "%255s", token) != 1) {
       strcat(*notation, "</b>");
       strcat(current->buffer, "-1,-1,-1,-1);\n"); /* exit loop if none */
       break;
@@ -1341,9 +1356,20 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
       while(isalnum(*temp_pointer) || *temp_pointer == '+' || *temp_pointer == '-' || *temp_pointer == '#' || *temp_pointer == '=') {
 	temp_pointer++;
       }
+      /* if no valid characters, we are confused so abort */
+      if(temp_pointer == temp) {
+	strcpy(token, "");
+	continue;
+      }
       strcpy(token, temp_pointer);
       *temp_pointer = '\0';
       strcpy(move, temp);
+
+      /* convert the move, checking for failure */
+      movepair = convert_move(move, current->to_play, current->board);  
+      if(movepair.move_1.to_col == -1) {
+	continue;
+      }
 
 #ifdef DEBUG
       printf("Move: \"%s\"\n", move);
@@ -1368,8 +1394,6 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
       } 
 
       sprintf(*notation + strlen(*notation), "<a class=\"move\" href=\"javascript:parent.board.jumpto(%d, %d);\" id=\"v%dm%d\">%s</a>", current->id, current->relative_move, current->id, current->relative_move, move);
-
-      movepair = convert_move(move, current->to_play, current->board);      
       append_move(current->buffer, movepair);
       
       /* execute move */
