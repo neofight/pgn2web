@@ -103,7 +103,7 @@ const char *const template_filename = INSTALL_PATH "template.html";
 void append_move(char* string, const MOVEPAIR movepair);
 MOVEPAIR convert_move(const char* algebraic, const COLOUR turn, const PIECE board[8][8]);
 MOVE extract_coordinates(const char* algebraic);
-void extract_game_list(FILE* file, const char* html_filename, char* game_list);
+void extract_game_list(FILE* file, const char* html_filename, char** game_list); /* !! allocates memory which must be freed by caller !! */
 void FEN_to_position(const char* FEN, PIECE board[8][8]);
 PIECE get_colour(const PIECE piece);
 MOVEPAIR get_pawn_move(const MOVE move, const COLOUR colour, const PIECE board[8][8]);
@@ -114,16 +114,16 @@ void make_move(const MOVEPAIR movepair, PIECE board[8][8]);
 void print_board(FILE* html, const char* FEN);
 void print_initial_position(FILE* file, const char* FEN, const char* var);
 void process_game(FILE *pgn, FILE *template, const char *html_filename, const int game, const char* game_list);
-void process_moves(FILE* pgn, const char* FEN, char* moves, char* notation);
+void process_moves(FILE* pgn, const char* FEN, char **moves, char **notation); /* !! allocates memory which must be freed by caller !! */
 void strip(FILE *pgn);
 
 /* main function */
 int main(int argc, char *argv[])
 {
-  char path[1024];
-  char command[1024];
+  char *path;
+  char *command;
   FILE *pgn, *template;
-  char game_list[1048576];
+  char *game_list;
   int game = 0;
   char test;
 
@@ -143,6 +143,10 @@ int main(int argc, char *argv[])
     perror("Unable to open template file");
     exit(1);
   }
+
+  /* allocate required space for path and command strings */
+  path = (char*)calloc(strlen(argv[2]) + 32, sizeof(char));
+  command = (char*)calloc(strlen(argv[2]) + strlen(INSTALL_PATH) + 32, sizeof(char));
 
   /* copy images */
   if(strrchr(argv[2], SEPERATOR) == NULL) {
@@ -171,8 +175,12 @@ int main(int argc, char *argv[])
   system(command);
 #endif
 
+  /* free allocated memory */
+  free((void*)path);
+  free((void*)command);
+
   /* extract game list */
-  extract_game_list(pgn, argv[2], game_list);
+  extract_game_list(pgn, argv[2], &game_list); /* !! allocates memory to game_list, free after use !! */
   rewind(pgn);
 
   /* ensure created files have access of 0644 */
@@ -202,6 +210,9 @@ int main(int argc, char *argv[])
   /* close files */
   fclose(pgn);
   fclose(template);
+
+  /* free memory allocated to game_list */
+  free((void*)game_list);
 
   /* sucess! */
   exit(0);
@@ -329,23 +340,25 @@ MOVE extract_coordinates(const char* algebraic)
 }
 
 /* constructs game list from STRs */
-void extract_game_list(FILE* file, const char* html_filename, char* game_list)
+void extract_game_list(FILE* file, const char* html_filename, char **game_list) /* !! allocates memory to game_list, it must be freed by the caller !! */
 {
   char buffer[256];
   char white[256];
   char black[256];
   char date[256];
+
   int game = 0;
-  char url[256];
-  char game_index[20];
 
-  /* check filename is not too long */
-  if(strlen(html_filename) > 200) {
-    fprintf(stderr, "HTML filename too long.\n");
-    exit(1);
-  }
+  char *url;
+  char game_index[32];
+  long int buffer_size;
 
-  strcpy(game_list, "");
+  /* allocate memory */
+  url = (char*)calloc(strlen(html_filename) + 32, sizeof(char));
+  *game_list = (char*)calloc(4096, sizeof(char)); /* use initial buffer of 4k */
+  buffer_size = 4096;
+
+  strcpy(*game_list, "");
   strcpy(white, "");
   strcpy(black, "");
   strcpy(date, "");
@@ -385,23 +398,32 @@ void extract_game_list(FILE* file, const char* html_filename, char* game_list)
       }
 
       /* generate html for option list */
-      strcat(game_list, "<option value=\"");
-      strcat(game_list, url);
-      strcat(game_list, "\">");
-      strcat(game_list, white);
-      strcat(game_list, " - ");
-      strcat(game_list, black);
-      strcat(game_list, " ");
-      strcat(game_list, date);
-      strcat(game_list, "\n");
+      strcat(*game_list, "<option value=\"");
+      strcat(*game_list, url);
+      strcat(*game_list, "\">");
+      strcat(*game_list, white);
+      strcat(*game_list, " - ");
+      strcat(*game_list, black);
+      strcat(*game_list, " ");
+      strcat(*game_list, date);
+      strcat(*game_list, "\n");
 
       strcpy(white, "");
       strcpy(black, "");
       strcpy(date, "");
 
       game++;
+
+      /* allocate more memory if buffer is running low */
+      if(strlen(*game_list) + 1024 + strlen(html_filename) > buffer_size) {
+	buffer_size += 4096;
+	*game_list = (char*)realloc((void*)*game_list, buffer_size);
+      }      
     }
   }
+
+  /* free memory */
+  free((void*)url);
 }
 
 /* setup board from FEN position */
@@ -774,11 +796,10 @@ void print_initial_position(FILE* file, const char* FEN, const char* var)
 /* process 1 pgn game */
 void process_game(FILE *pgn, FILE *template, const char *html_filename, int game, const char* game_list)
 {
-  char game_filename[256];
-  char game_index[16];
+  char *game_filename;
+  char game_index[32];
   FILE *html;
   char buffer[256];
-
   char event[256];
   char site[256];
   char date[256];
@@ -787,17 +808,16 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
   char black[256];
   char result[256];
   char FEN[256];
-  char moves[163840];
-  char notation[163840];
 
-  *event = *site = *date = *round = *white = *black = *result = *FEN = *moves = *notation = '\0';
+  char *moves;
+  char *notation;
+
+  *event = *site = *date = *round = *white = *black = *result = *FEN = '\0';
+
+  /* allocate memory for filename */
+  game_filename = (char*)calloc(strlen(html_filename) + 32, sizeof(char));
 
   /* open html file */
-  if(strlen(html_filename) > 200) {
-    fprintf(stderr, "HTML filename too long.\n");
-    exit(1);
-  }
-
   strcpy(game_filename, html_filename);
   sprintf(game_index, "%d", game);
 
@@ -836,7 +856,7 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
   }
 
   /* process move text */
-  process_moves(pgn, FEN, moves, notation);
+  process_moves(pgn, FEN, &moves, &notation); /* !! allocates memory for move and notation, must be freed by caller !! */
 
   /* process template file, replacing XML-like tags */
   while(fgets(buffer, 256, template) != NULL) {
@@ -888,10 +908,15 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
 
   /* close html file */
   fclose(html);
+
+  /* free memory */
+  free((void*)game_filename);
+  free((void*)moves);
+  free((void*)notation);
 }
 
 /* create html & javascript data for moves in pgn file */
-void process_moves(FILE* pgn, const char* FEN, char* moves, char* notation)
+void process_moves(FILE* pgn, const char* FEN, char **moves, char **notation) /* !! allocates memory which must be freed by caller !! */
 {
   const char *character;
   COLOUR to_play;
@@ -899,13 +924,22 @@ void process_moves(FILE* pgn, const char* FEN, char* moves, char* notation)
   PIECE board[8][8];
   char move[256];
   MOVEPAIR movepair;
+  long int moves_size, notation_size;
+
+  /* allocate space for moves and notation */
+  moves_size = 1024;
+  *moves = (char*)calloc(moves_size, sizeof(char));
+  notation_size = 8192;
+  *notation = (char*)calloc(notation_size, sizeof(char));
+  **moves = **notation = '\0';
+
 
 #ifdef DEBUG
   static int game = 0;
   game++;
   printf("\n\n");
 #endif
- 
+
   /* setup board */
   FEN_to_position(FEN, board);
 
@@ -915,7 +949,7 @@ void process_moves(FILE* pgn, const char* FEN, char* moves, char* notation)
   to_play = (*character == 'w') ? WHITE : BLACK;
 
   /* process moves */
-  sprintf(moves, "var moves = new Array(");
+  sprintf(*moves, "var moves = new Array(");
 
   for(;;) {
 
@@ -929,13 +963,13 @@ void process_moves(FILE* pgn, const char* FEN, char* moves, char* notation)
     
   //skip first white move if its black to play
   if(moveno != 1 || to_play == WHITE) {
-    sprintf(notation + strlen(notation), "<a href=\"javascript:jumpto(%d)\" class=\"move\" id=\"m%d\"=>%d.%s</a> ", moveno * 2 - 1 - (to_play == BLACK), moveno * 2 - 1 - (to_play == BLACK), moveno, move);
+    sprintf(*notation + strlen(*notation), "<a href=\"javascript:jumpto(%d)\" class=\"move\" id=\"m%d\"=>%d.%s</a> ", moveno * 2 - 1 - (to_play == BLACK), moveno * 2 - 1 - (to_play == BLACK), moveno, move);
     movepair = convert_move(move, WHITE, board);
-    append_move(moves, movepair);
+    append_move(*moves, movepair);
     make_move(movepair, board);
     }
   else {
-      sprintf(notation + strlen(notation), "%d.%s ", moveno, move);
+      sprintf(*notation + strlen(*notation), "%d.%s ", moveno, move);
     }
 
 #ifdef DEBUG
@@ -960,16 +994,27 @@ void process_moves(FILE* pgn, const char* FEN, char* moves, char* notation)
     printf(" %s\n", move);
 #endif
 
-    sprintf(notation + strlen(notation), "<a href=\"javascript:jumpto(%d)\" class=\"move\" id=\"m%d\">%s</a> ", moveno * 2 - (to_play == BLACK), moveno * 2 - (to_play == BLACK), move);
+    sprintf(*notation + strlen(*notation), "<a href=\"javascript:jumpto(%d)\" class=\"move\" id=\"m%d\">%s</a> ", moveno * 2 - (to_play == BLACK), moveno * 2 - (to_play == BLACK), move);
     movepair = convert_move(move, BLACK, board);
-    append_move(moves, movepair);
+    append_move(*moves, movepair);
     make_move(movepair, board);
 
     /* increase move numner */
     moveno++;
+
+    /* allocate more space if buffers are running low */
+    if(strlen(*moves) + 32 > moves_size) {
+      moves_size += 1024;
+      *moves = (char*)realloc((void*)*moves, moves_size);
+    }
+
+    if(strlen(*notation) + 256 > notation_size) {
+      notation_size += 8192;
+      *notation = (char*)realloc((void*)*notation, notation_size);
+    }
   }
 
-  sprintf(moves + strlen(moves), "-1,-1,-1,-1);\n");
+  sprintf(*moves + strlen(*moves), "-1,-1,-1,-1);\n");
 }
 
 /* strips comments and variations (including NAGs) */
