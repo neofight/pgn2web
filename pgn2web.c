@@ -71,11 +71,13 @@ const char *credit_html = "This page was created with <a href=\"http://pgn2web.s
 #ifdef DEBUG
 const char *board_template = "templates" SEPERATOR_STRING "board.html";
 const char *frame_template = "templates" SEPERATOR_STRING "frame.html";
-const char *template_filename = "templates" SEPERATOR_STRING "template.html";
+const char *template_filename = "templates" SEPERATOR_STRING "game.html";
+const char *single_filename = "templates" SEPERATOR_STRING "single.html";
+
 #else
 const char *board_template = INSTALL_PATH "templates" SEPERATOR_STRING "board.html";
 const char *frame_template = INSTALL_PATH "templates" SEPERATOR_STRING "frame.html";
-const char *game_filename = INSTALL_PATH "templates" SEPERATOR_STRING "template.html";
+const char *game_filename = INSTALL_PATH "templates" SEPERATOR_STRING "game.html";
 const char *single_filename = INSTALL_PATH "templates" SEPERATOR_STRING "single.html";
 #endif
 
@@ -107,7 +109,7 @@ int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, co
 
   /* open files */
   if((pgn = fopen(pgn_filename, "r")) == NULL) {
-      exit(1);
+    exit(1);
   }
 
   /* select and open the right template file */
@@ -115,7 +117,7 @@ int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, co
 
   if((template = fopen(template_filename, "r")) == NULL) {
     perror("Unable to open template file");
-      exit(1);
+    exit(1);
   }
 
   /* allocate required space for path and command strings */

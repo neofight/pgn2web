@@ -1,194 +1,255 @@
-/*
-  p2wgui - GUI frontend to pgn2web
-
-  Copyright (C) 2004, 2005 William Hoggarth <email: me@whoggarth.com>
-
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation; either version 2 of the License, or
-  (at your option) any later version.
-
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+#include "gui.h"
 
 #include "pgn2web.h"
 
-//include headers for wxWidgets
-#include "wx/wxprec.h"
-#ifndef WX_PRECOMP
-#include "wx/wx.h"
-#endif
+/*** PiecesView ***/
 
-//include icon resource
-#include "pgn2web.xpm"
+const char* PiecesView::pieceSets[16] = { "adventurer", "alfonso-x", "cases", "condal",
+					  "harlequin", "kingdom", "leipzig", "line", "lucena",
+					  "magnetic", "mark", "marroquin", "maya", "mediaeval",
+					  "merida", "motif"};
 
-//define constant for system dependent file seperator
-#ifdef WINDOWS
-const char SEPERATOR = '\\';
-#else
-const char SEPERATOR = '/';
-#endif
+PiecesView::PiecesView(wxWindow* parent) : wxWindow(parent, -1, wxDefaultPosition,
+						    wxSize(196,36))
+{
+  SetBackgroundColour(wxColour(wxT("black")));
 
-//panel containing all the controls
-class p2wPanel : public wxPanel {
-public:
-  p2wPanel(wxWindow *pcParent);
+  //Load pieces bitmaps
+  pieceSet = 14;
 
-  void BrowsePGN(wxCommandEvent cEvent);
-  void BrowseHTML(wxCommandEvent cEvent);
-  void Convert(wxCommandEvent cEvent);
-  void Quit(wxCommandEvent cEvent);
+  for(int set = 0; set < 16; set++) {
 
-protected:
-  wxStaticText *m_pcPGNLabel;
-  wxTextCtrl *m_pcPGNTextCtrl;
-  wxButton *m_pcPGNButton;
-
-  wxStaticText *m_pcHTMLLabel;
-  wxTextCtrl *m_pcHTMLTextCtrl;
-  wxButton *m_pcHTMLButton;
-
-  wxButton *m_pcConvert;
-  wxButton *m_pcQuit;
-
-  enum {ID_BROWSEPGN, ID_BROWSEHTML, ID_CONVERT};
-
-  DECLARE_EVENT_TABLE()
-};
-
-//simple app class
-class p2wApp : public wxApp {
-public:
-  virtual bool OnInit();
-};
-
-DECLARE_APP(p2wApp)
-
-BEGIN_EVENT_TABLE(p2wPanel, wxPanel)
-  EVT_BUTTON(ID_BROWSEPGN, p2wPanel::BrowsePGN)
-  EVT_BUTTON(ID_BROWSEHTML, p2wPanel::BrowseHTML)
-  EVT_BUTTON(ID_CONVERT, p2wPanel::Convert)
-  EVT_BUTTON(wxID_EXIT, p2wPanel::Quit)
-END_EVENT_TABLE()
-
-IMPLEMENT_APP(p2wApp)
-
-p2wPanel::p2wPanel(wxWindow *pcParent) : wxPanel(pcParent) {
-  //add and layout gui components
-  wxBoxSizer *pcRootSizer = new wxBoxSizer(wxVERTICAL);
-  wxBoxSizer *pcFileSizer = new wxBoxSizer(wxHORIZONTAL);
-  wxBoxSizer *pcPGNSizer = new wxBoxSizer(wxHORIZONTAL);
-  wxBoxSizer *pcPGNLabelSizer = new wxBoxSizer(wxVERTICAL);
-  wxBoxSizer *pcHTMLSizer = new wxBoxSizer(wxHORIZONTAL);
-  wxBoxSizer *pcHTMLLabelSizer = new wxBoxSizer(wxVERTICAL);
-  wxBoxSizer *pcButtonSizer = new wxBoxSizer(wxHORIZONTAL);
-
-  m_pcPGNLabel = new wxStaticText(this, -1, "PGN File");
-  m_pcPGNTextCtrl = new wxTextCtrl(this, -1);
-  m_pcPGNButton = new wxButton(this, ID_BROWSEPGN, "Browse...");
-
-  pcPGNSizer->Add(m_pcPGNTextCtrl, 1, wxALIGN_CENTER | wxALL, 5);
-  pcPGNSizer->Add(m_pcPGNButton, 0, wxALIGN_CENTER | wxALL, 5);
-  pcPGNLabelSizer->Add(m_pcPGNLabel, 0, wxALIGN_CENTER | wxALL, 5);
-  pcPGNLabelSizer->Add(pcPGNSizer, 0, wxEXPAND);
-
-  m_pcHTMLLabel = new wxStaticText(this, -1, "HTML File(s)");
-  m_pcHTMLTextCtrl = new wxTextCtrl(this, -1);
-  m_pcHTMLButton = new wxButton(this, ID_BROWSEHTML, "Browse...");
-
-  pcHTMLSizer->Add(m_pcHTMLTextCtrl, 1, wxALIGN_CENTER | wxALL, 5);
-  pcHTMLSizer->Add(m_pcHTMLButton, 0, wxALIGN_CENTER | wxALL, 5);
-  pcHTMLLabelSizer->Add(m_pcHTMLLabel, 0, wxALIGN_CENTER | wxALL, 5);
-  pcHTMLLabelSizer->Add(pcHTMLSizer, 0, wxEXPAND);
-
-  pcFileSizer->Add(pcPGNLabelSizer, 1, wxALIGN_CENTER | wxEXPAND);
-  pcFileSizer->Add(pcHTMLLabelSizer, 1, wxALIGN_CENTER | wxEXPAND);
-
-  m_pcConvert = new wxButton(this, ID_CONVERT, "Convert");
-  m_pcQuit = new wxButton(this, wxID_EXIT, "Quit");
-
-  pcButtonSizer->Add(m_pcConvert, 0, wxALIGN_CENTER | wxALL, 5);
-  pcButtonSizer->Add(m_pcQuit, 0, wxALIGN_CENTER | wxALL, 5);
-
-  pcRootSizer->Add(pcFileSizer, 1, wxALIGN_CENTER | wxEXPAND);
-  pcRootSizer->Add(pcButtonSizer, 1, wxALIGN_CENTER);
-
-  SetSizer(pcRootSizer); 
-  SetAutoLayout(true);
-  Layout();
-  Fit();
+    pieceBitmaps[set][0] = new wxBitmap(wxString("images/") + pieceSets[set] + "/wpws.png",
+					wxBITMAP_TYPE_PNG);
+    pieceBitmaps[set][1] = new wxBitmap(wxString("images/") + pieceSets[set] + "/wnbs.png",
+					wxBITMAP_TYPE_PNG);
+    pieceBitmaps[set][2] = new wxBitmap(wxString("images/") + pieceSets[set] + "/wbws.png",
+					wxBITMAP_TYPE_PNG);
+    pieceBitmaps[set][3] = new wxBitmap(wxString("images/") + pieceSets[set] + "/wrbs.png",
+					wxBITMAP_TYPE_PNG);
+    pieceBitmaps[set][4] = new wxBitmap(wxString("images/") + pieceSets[set] + "/wqws.png",
+					wxBITMAP_TYPE_PNG);
+    pieceBitmaps[set][5] = new wxBitmap(wxString("images/") + pieceSets[set] + "/wkbs.png",
+					wxBITMAP_TYPE_PNG);
+  }
 }
 
-//do the conversion by using pgn2web
-void p2wPanel::Convert(wxCommandEvent cEvent) {
-  wxString cCommand;
-  wxString cPath = m_pcHTMLTextCtrl->GetValue();
+void PiecesView::onPaint(wxPaintEvent &event)
+{
+  wxPaintDC dc(this);
+
+  for(int piece = 0, x= 2; piece < 6; piece++, x += 32) {
+    dc.DrawBitmap(*pieceBitmaps[pieceSet][piece], x, 2, false);
+  }
+}
+
+void PiecesView::setPieceSet(int set)
+{
+  pieceSet = set;
+  Refresh();
+}
+
+BEGIN_EVENT_TABLE(PiecesView, wxWindow)
+     EVT_PAINT(PiecesView::onPaint)
+END_EVENT_TABLE()
+
+/*** p2wFrame ***/
+
+p2wFrame::p2wFrame(wxWindow* parent, int id, const wxString& title, const wxPoint& pos,
+		   const wxSize& size, long style)
+  : wxFrame(parent, id, title, pos, size,
+	    wxICONIZE|wxCAPTION|wxMINIMIZE|wxMINIMIZE_BOX|wxSYSTEM_MENU)
+{
+  optionsBox = new wxStaticBox(this, -1, wxT("Options"));
+  pgnLabel = new wxStaticText(this, -1, wxT("PGN file"), wxDefaultPosition, wxDefaultSize,
+			      wxALIGN_RIGHT);
+  pgnText = new wxTextCtrl(this, -1, wxT(""));
+  pgnButton = new wxButton(this, ID_BROWSEPGN, wxT("Browse..."));
+  htmlLabel = new wxStaticText(this, -1, wxT("HTML file(s)"));
+  htmlText = new wxTextCtrl(this, -1, wxT(""));
+  htmlButton = new wxButton(this, ID_BROWSEHTML, wxT("Browse..."));
+  linkCheckBox = new wxCheckBox(this, -1, wxT("Include link to pgn2web homepage"));
+  piecesView = new PiecesView(this);
+  const wxString piecesChoice_choices[] = {
+    wxT("Adventurer"),
+    wxT("Alfonso-X"),
+    wxT("Cases"),
+    wxT("Condal"),
+    wxT("Harlequin"),
+    wxT("Kingdom"),
+    wxT("Leipzig"),
+    wxT("Line"),
+    wxT("Lucena"),
+    wxT("Magnetic"),
+    wxT("Mark"),
+    wxT("Marroquin"),
+    wxT("Maya"),
+    wxT("Mediaeval"),
+    wxT("Merida"),
+    wxT("Motif")
+  };
+  piecesChoice = new wxChoice(this, ID_CHOOSE, wxDefaultPosition, wxDefaultSize, 16,
+			      piecesChoice_choices, 0);
+  layoutLabel = new wxStaticText(this, -1, wxT("Layout:"));
+  framesetRadio = new wxRadioButton(this, -1, wxT("Frameset"));
+  linkedRadio = new wxRadioButton(this, -1, wxT("Linked"));
+  individuaRadio = new wxRadioButton(this, -1, wxT("Individual"));
+  convertButton = new wxButton(this, ID_CONVERT, wxT("Convert"));
+  quitButton = new wxButton(this, wxID_EXIT, wxT("Quit"));
+
+  set_properties();
+  do_layout();
+}
+
+void p2wFrame::browsePGN(wxCommandEvent& event)
+{
+  wxFileDialog *cDialog = new wxFileDialog(this, "Select a PGN file...", "", "",
+					   "PGN files(*.pgn)|*.pgn|", wxOPEN);
+  if(wxID_OK == cDialog->ShowModal()) {
+    pgnText->SetValue(cDialog->GetPath());
+  }
+  cDialog->Destroy();
+}
+ 
+void p2wFrame::browseHTML(wxCommandEvent& event)
+{
+  wxFileDialog *cDialog = new wxFileDialog(this, "Name HTML file(s)...", "", "",
+					   "HTML files(*.html)|*.html|", wxSAVE);
+  if(wxID_OK == cDialog->ShowModal()) {
+    htmlText->SetValue(cDialog->GetPath());
+  }
+  cDialog->Destroy();
+}
+
+void p2wFrame::choosePieceSet(wxCommandEvent& event)
+{
+  piecesView->setPieceSet(event.GetInt());
+}
+
+void p2wFrame::convert(wxCommandEvent& event)
+{
+  STRUCTURE layout;
 
   //ensure there are filenames entered
-  if(m_pcPGNTextCtrl->GetValue() == "") {
-    wxMessageDialog* cDialog = new wxMessageDialog(this, "Please choose a PGN file to convert", "pgn2web", wxOK | wxICON_INFORMATION);
+  if(pgnText->GetValue() == "") {
+    wxMessageDialog* cDialog = new wxMessageDialog(this, "Please choose a PGN file to convert",
+						   "pgn2web", wxOK | wxICON_INFORMATION);
     cDialog->ShowModal();
     cDialog->Destroy();
     return;
   }
 
-  if(cPath == "") {
-    wxMessageDialog* cDialog = new wxMessageDialog(this, "Please enter a name for the HTML file(s)", "pgn2web", wxOK | wxICON_INFORMATION);
+  if(htmlText->GetValue() == "") {
+    wxMessageDialog* cDialog = new wxMessageDialog(this,
+						   "Please enter a name for the HTML file(s)",
+						   "pgn2web", wxOK | wxICON_INFORMATION);
     cDialog->ShowModal();
     cDialog->Destroy();
     return;
   }
 
   //if the html filename has no path use the PGN file's path
-  if(cPath.Find(SEPERATOR, true) == -1) {
-    cPath = m_pcPGNTextCtrl->GetValue();
+  wxString path = htmlText->GetValue();
+  
+  if(path.Find(SEPERATOR, true) == -1) {
+    path = pgnText->GetValue();
 
-    if(cPath.Find(SEPERATOR, true) != -1) {
-      cPath = cPath.Left(cPath.Find(SEPERATOR, true) + 1);
-      m_pcHTMLTextCtrl->SetValue(cPath + m_pcHTMLTextCtrl->GetValue());
+    if(path.Find(SEPERATOR, true) != -1) {
+      path = path.Left(path.Find(SEPERATOR, true) + 1);
+      htmlText->SetValue(path + htmlText->GetValue());
     }
   }
 
-  pgn2web(m_pcPGNTextCtrl->GetValue(), m_pcHTMLTextCtrl->GetValue(), true, "merida", frameset);
-}
-
-//bring up filebrowser to select a file
-void p2wPanel::BrowsePGN(wxCommandEvent cEvent) {
-  wxFileDialog *cDialog = new wxFileDialog(this, "Select a PGN file...", "", "", "PGN files(*.pgn)|*.pgn|", wxOPEN);
-  if(wxID_OK == cDialog->ShowModal()) {
-    m_pcPGNTextCtrl->SetValue(cDialog->GetPath());
+  if(framesetRadio->GetValue()) {
+    layout = FRAMESET;
   }
-  cDialog->Destroy();
-}
-
-//bring up filebrowser to select a file
-void p2wPanel::BrowseHTML(wxCommandEvent cEvent) {
-  wxFileDialog *cDialog = new wxFileDialog(this, "Name HTML file(s)...", "", "", "HTML files(*.html)|*.html|", wxSAVE);
-  if(wxID_OK == cDialog->ShowModal()) {
-    m_pcHTMLTextCtrl->SetValue(cDialog->GetPath());
+  else {
+    if(linkedRadio->GetValue()) {
+      layout = LINKED;
+    }
+    else {
+      layout = INDIVIDUAL;
+    }
   }
-  cDialog->Destroy();
+
+  pgn2web(pgnText->GetValue().c_str(), htmlText->GetValue().c_str(), linkCheckBox->GetValue(),
+	  piecesChoice->GetStringSelection().Lower().c_str(), layout);
 }
 
-//quit
-void p2wPanel::Quit(wxCommandEvent cEvent) {
-  GetParent()->Close();
+void p2wFrame::quit(wxCommandEvent& event)
+{
+  Close();
 }
 
-//setup main window, add panel and size it
-bool p2wApp::OnInit() {
-  wxFrame *pcFrame = new wxFrame(NULL, -1, "pgn2web", wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE & ~wxRESIZE_BORDER & ~wxMAXIMIZE_BOX);
-  wxPanel *pcPanel = new p2wPanel(pcFrame);
-  pcFrame->SetIcon(wxIcon(pgn2web_xpm));
-  pcFrame->Fit();
-  pcFrame->Show();
-  SetTopWindow(pcFrame);
+void p2wFrame::set_properties()
+{
+  SetTitle(wxT("pgn2web"));
+  SetIcon(wxIcon(pgn2web_xpm));
+  linkCheckBox->SetValue(1);
+  piecesView->SetSize(wxSize(196, 36));
+  piecesChoice->SetSelection(14);
+}
+
+void p2wFrame::do_layout()
+{
+  wxBoxSizer* rootSizer = new wxBoxSizer(wxVERTICAL);
+  wxBoxSizer* buttonsSizer = new wxBoxSizer(wxHORIZONTAL);
+  wxStaticBoxSizer* optionsSizer = new wxStaticBoxSizer(optionsBox, wxVERTICAL);
+  wxBoxSizer* layoutSizer = new wxBoxSizer(wxHORIZONTAL);
+  wxBoxSizer* piecesSizer = new wxBoxSizer(wxHORIZONTAL);
+  wxFlexGridSizer* filesSizer = new wxFlexGridSizer(2, 3, 0, 0);
+  filesSizer->Add(pgnLabel, 0, wxALL|wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5);
+  filesSizer->Add(pgnText, 1, wxALL|wxEXPAND|wxALIGN_CENTER_VERTICAL, 5);
+  filesSizer->Add(pgnButton, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
+  filesSizer->Add(htmlLabel, 0, wxALL|wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5);
+  filesSizer->Add(htmlText, 1, wxALL|wxEXPAND|wxALIGN_CENTER_VERTICAL, 5);
+  filesSizer->Add(htmlButton, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
+  filesSizer->AddGrowableCol(1);
+  rootSizer->Add(filesSizer, 0, wxLEFT|wxRIGHT|wxTOP|wxEXPAND, 5);
+  optionsSizer->Add(linkCheckBox, 0, wxALIGN_CENTER_HORIZONTAL, 0);
+  piecesSizer->Add(piecesView, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
+  piecesSizer->Add(piecesChoice, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
+  optionsSizer->Add(piecesSizer, 1, wxEXPAND, 0);
+  layoutSizer->Add(layoutLabel, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
+  layoutSizer->Add(framesetRadio, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
+  layoutSizer->Add(linkedRadio, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
+  layoutSizer->Add(individuaRadio, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
+  optionsSizer->Add(layoutSizer, 1, wxALIGN_CENTER_HORIZONTAL, 0);
+  rootSizer->Add(optionsSizer, 1, wxALL|wxEXPAND, 10);
+  buttonsSizer->Add(convertButton, 0, wxALL, 5);
+  buttonsSizer->Add(quitButton, 0, wxALL, 5);
+  rootSizer->Add(buttonsSizer, 0,
+		 wxLEFT|wxRIGHT|wxBOTTOM|wxALIGN_CENTER_HORIZONTAL|wxADJUST_MINSIZE, 5);
+  SetAutoLayout(true);
+  SetSizer(rootSizer);
+  rootSizer->Fit(this);
+  rootSizer->SetSizeHints(this);
+  Layout();
+  Centre();
+}
+
+BEGIN_EVENT_TABLE(p2wFrame, wxFrame)
+  EVT_BUTTON(ID_BROWSEPGN, p2wFrame::browsePGN)
+  EVT_BUTTON(ID_BROWSEHTML, p2wFrame::browseHTML)
+  EVT_CHOICE(ID_CHOOSE, p2wFrame::choosePieceSet)
+  EVT_BUTTON(ID_CONVERT, p2wFrame::convert)
+  EVT_BUTTON(wxID_EXIT, p2wFrame::quit)
+END_EVENT_TABLE()
+
+/*** p2wApp ***/
+
+class p2wApp: public wxApp {
+public:
+  bool OnInit();
+};
+
+IMPLEMENT_APP(p2wApp)
+  
+bool p2wApp::OnInit()
+{
+  wxInitAllImageHandlers();
+  p2wFrame* mainFrame = new p2wFrame(0, -1, "");
+  SetTopWindow(mainFrame);
+  mainFrame->Show();
   return true;
 }
