@@ -819,7 +819,7 @@ char* move_to_string(const MOVE *move)
 {
   char* string;
 
-  if(move->promotion_piece == NO_PIECE) {
+  if(move->promotion_piece == NO_PIECE_TYPE) {
     string = (char*)calloc(5, sizeof(char));
   }
   else {
@@ -831,7 +831,7 @@ char* move_to_string(const MOVE *move)
   string[2] = 'a' + move->to_col;
   string[3] = '1' + move->to_row;
 
-  if(move->promotion_piece == NO_PIECE) {
+  if(move->promotion_piece == NO_PIECE_TYPE) {
     string[4] = '\0';
   }
   else {
@@ -1013,7 +1013,7 @@ MOVE string_to_move(const char* notation)
     move.promotion_piece = piece_to_piece_type(char_to_piece(notation[4]));
   }
   else {
-    move.promotion_piece = NO_PIECE;
+    move.promotion_piece = NO_PIECE_TYPE;
   }
 
   return move;

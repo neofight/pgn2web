@@ -1,4 +1,0 @@
-Please note that CVS does not currently contain any of the graphics
-used by pgn2web. The images directory can be taken from one of the
-file releases. Note also that the images directory is not needed for
-compilation, or even (technically speaking) execution.
