@@ -1,7 +1,7 @@
 /*
   pgn2web - Converts PGN files to interactive web pages
 
-  Copyright (C) 2004 William Hoggarth <email: me@whoggarth.com>
+  Copyright (C) 2004 William Hoggarth <email: whoggarth@users.sourceforge.net>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -68,6 +68,24 @@ typedef struct {
   int range;
 } MOVEVECTOR;
 
+/* variation type definition */
+typedef struct variation {
+  struct variation *parent;
+  struct variation *siblings;
+  struct variation *children;
+
+  int parent_move;
+  COLOUR to_play;
+  int actual_move;
+  int relative_move;
+  PIECE board[8][8];
+  PIECE previous_board[8][8];
+
+  int id;
+  char *buffer;
+  long int buffer_size;
+} VARIATION;
+
 /* chess constants */
 const MOVEPAIR WCASTLEKINGSIDE = { { 4, 7, 6, 7 },
 				   { 7, 7, 5, 7 } };
@@ -102,6 +120,7 @@ const char *const template_filename = INSTALL_PATH "template.html";
 /* function prototypes */
 void append_move(char* string, const MOVEPAIR movepair);
 MOVEPAIR convert_move(const char* algebraic, const COLOUR turn, const PIECE board[8][8]);
+void delete_variation(VARIATION *variation, char **moves, long int *moves_size);
 MOVE extract_coordinates(const char* algebraic);
 void extract_game_list(FILE* file, const char* html_filename, char** game_list); /* !! allocates memory which must be freed by caller !! */
 void FEN_to_position(const char* FEN, PIECE board[8][8]);
@@ -309,6 +328,58 @@ MOVEPAIR convert_move(const char* algebraic, COLOUR turn, const PIECE board[8][8
   }
 
   return movepair;
+}
+
+/* deletes a variation adding its data to the moves string */
+void delete_variation(VARIATION *variation, char **moves, long int *moves_size)
+{
+  /* add parent information to moves */
+#ifdef DEBUG
+  printf("Adding moves: %d\n", variation->id);
+  printf("%s\n", variation->buffer);
+#endif
+
+  *moves_size += 64;
+  *moves = (char*)realloc((void*)*moves, *moves_size * sizeof(char));
+  sprintf(*moves + strlen(*moves), "parents[%d] = new Array(", variation->id);
+  if(variation->parent) {
+    sprintf(*moves + strlen(*moves), "%d,%d);\n", variation->parent->id, variation->parent_move); 
+  }
+  else {
+    sprintf(*moves + strlen(*moves), "-1,%d);\n", variation->parent_move); 
+  }
+ 
+  /* add buffer to moves */
+#ifdef DEBUG
+  printf("Added moves: %d\n", variation->id);
+  printf("%s\n", variation->buffer);
+#endif
+
+  *moves_size += strlen(variation->buffer);
+  *moves = (char*)realloc((void*)*moves, *moves_size * sizeof(char));
+  strcat(*moves, variation->buffer);
+
+  /* if there are children delete these first */
+  if(variation->children) {
+    delete_variation(variation->children, moves, moves_size);
+  }
+
+  /* if there are siblings delete these second */
+  if(variation->siblings) {
+    delete_variation(variation->siblings, moves, moves_size);
+  }
+
+#ifdef DEBUG
+  printf("Deleting: %d\n", variation->id);
+#endif
+
+  /* finally delete the variation itself */ 
+  free((void*)variation->buffer);
+  free((void*)variation);
+
+#ifdef DEBUG
+  printf("Deleted: %d\n", variation->id);
+#endif
 }
 
 /* extract any co-ordinates contained in the notation */
@@ -917,105 +988,253 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
 }
 
 /* create html & javascript data for moves in pgn file */
-void process_moves(FILE* pgn, const char* FEN, char **moves, char **notation) /* !! allocates memory which must be freed by caller !! */
+void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /* !! allocates memory which must be freed by caller !! */
 {
-  const char *character;
-  COLOUR to_play;
-  int moveno = 1;
-  PIECE board[8][8];
-  char move[256];
-  MOVEPAIR movepair;
-  long int moves_size, notation_size;
+  VARIATION *root, *current, *new;
+  int new_id = 0;
+  const char* const_pointer;
+  long int moves_size;
+  long int notation_size;
 
-  /* allocate space for moves and notation */
-  moves_size = 1024;
-  *moves = (char*)calloc(moves_size, sizeof(char));
+  BOOL in_comment = FALSE;
+  BOOL left_variation = FALSE;
+  BOOL entered_variation = FALSE;
+  char move[256];
+  char token[256];
+  char temp[256];
+  char *temp_pointer;
+
+  int col, row;
+  MOVEPAIR movepair;
+
+  /* create root variation */
+  root = (VARIATION*)malloc(sizeof(VARIATION));
+  root->parent = root->siblings = root->children = 0;
+  root->id = new_id++;
+  root->buffer_size = 1024;
+  root->buffer = (char*)calloc(root->buffer_size, sizeof(char));
+  sprintf(root->buffer, "moves[%d] = new Array(", root->id);
+
+  root->parent_move = 0;
+  root->actual_move = 1;
+  root->relative_move = 1;
+  const_pointer = FEN;
+  while(*(const_pointer++) != ' ') { }
+  root->to_play = (*const_pointer == 'w') ? WHITE : BLACK;
+  FEN_to_position(FEN, root->board);
+
+  current = root;
+
+  /* allocate notation buffer */
   notation_size = 8192;
   *notation = (char*)calloc(notation_size, sizeof(char));
-  **moves = **notation = '\0';
+  strcpy(*notation, "");
 
-
-#ifdef DEBUG
-  static int game = 0;
-  game++;
-  printf("\n\n");
-#endif
-
-  /* setup board */
-  FEN_to_position(FEN, board);
-
-  /* decide on initial position and who is to play */
-  character = FEN;
-  while(*(character++) != ' ') { }
-  to_play = (*character == 'w') ? WHITE : BLACK;
-
-  /* process moves */
-  sprintf(*moves, "var moves = new Array(");
-
-  for(;;) {
-
-  /* process white move */
-  strip(pgn);
-
-  if(fscanf(pgn, "%*d.%s", move) != 1) {
-    fscanf(pgn, "%s", move);
-    break;
-  }
-    
-  //skip first white move if its black to play
-  if(moveno != 1 || to_play == WHITE) {
-    sprintf(*notation + strlen(*notation), "<a href=\"javascript:jumpto(%d)\" class=\"move\" id=\"m%d\"=>%d.%s</a> ", moveno * 2 - 1 - (to_play == BLACK), moveno * 2 - 1 - (to_play == BLACK), moveno, move);
-    movepair = convert_move(move, WHITE, board);
-    append_move(*moves, movepair);
-    make_move(movepair, board);
-    }
-  else {
-      sprintf(*notation + strlen(*notation), "%d.%s ", moveno, move);
-    }
-
-#ifdef DEBUG
-    printf("%d: %d. %s", game, moveno, move);
-#endif
-
-    /* process black move */
-    strip(pgn);
-
-    if(fscanf(pgn, "%*d...%s", move) != 1) {
-      if(fscanf(pgn, "%s", move) != 1) {
-	break;
-      }
-    }
-
-    /* check for result (note first digit is consumed by %*d above */
-    if(!strcmp(move, "-0") || !strcmp(move, "-1") || !strcmp(move, "/2-1/2") || !strcmp(move, "*")) {
+  /* parse move text */
+  while(current) {
+    /* fetch next token */
+    if(fscanf(pgn, "%s", token) != 1) {
+      strcat(current->buffer, "-1,-1,-1,-1);\n"); /* exit loop if none */
       break;
     }
 
-#ifdef DEBUG
-    printf(" %s\n", move);
-#endif
-
-    sprintf(*notation + strlen(*notation), "<a href=\"javascript:jumpto(%d)\" class=\"move\" id=\"m%d\">%s</a> ", moveno * 2 - (to_play == BLACK), moveno * 2 - (to_play == BLACK), move);
-    movepair = convert_move(move, BLACK, board);
-    append_move(*moves, movepair);
-    make_move(movepair, board);
-
-    /* increase move numner */
-    moveno++;
-
-    /* allocate more space if buffers are running low */
-    if(strlen(*moves) + 32 > moves_size) {
-      moves_size += 1024;
-      *moves = (char*)realloc((void*)*moves, moves_size);
+    /* enlarge buffers if necessary */
+    if(strlen(*notation) + strlen(token) + 256 > notation_size) {
+      notation_size += 8192;
+      *notation = (char*)realloc((void*)*notation, notation_size * sizeof(char));
     }
 
-    if(strlen(*notation) + 256 > notation_size) {
-      notation_size += 8192;
-      *notation = (char*)realloc((void*)*notation, notation_size);
+    if(strlen(current->buffer) + 256 > current->buffer_size) {
+      current->buffer_size += 1024;
+      current->buffer = (char*)realloc((void*)current->buffer, current->buffer_size * sizeof(char));
+    }
+
+    /* parse token */
+    while(strcmp(token, "")) {
+
+#ifdef DEBUG
+    printf("Token: \"%s\"\n", token);
+#endif
+
+      /* if in comment copy to notation */
+      if(in_comment) {
+	if(strchr(token, '}')) {
+	  temp_pointer = strchr(token, '}');
+	  *temp_pointer = '\0';
+	  strcat(*notation, " ");
+	  strcat(*notation, token);
+
+	  temp_pointer++;
+	  strcpy(temp, temp_pointer);
+	  strcpy(token, temp);
+	  in_comment = FALSE;
+	  continue;
+	}
+	else {
+	  strcat(*notation, " ");
+	  strcat(*notation, token);
+	  strcpy(token, "");
+	  continue;
+	}
+      }
+
+      /* Start of a comment? */
+      if(token[0] == '{') {
+	strcpy(temp, token + 1);
+	strcpy(token, temp);
+	in_comment = TRUE;
+	continue;
+      }
+
+      /* check for result */
+      if(!strcmp(token, "1-0") || !strcmp(token, "0-1") || !strcmp(token, "1/2-1/2") || !strcmp(token, "*")) {
+	strcat(current->buffer, "-1,-1,-1,-1);\n");
+	current = 0;
+	break;
+      }
+      
+      /* NAG? (currently ignored) */
+      if(token[0] == '$') {
+	temp_pointer = token + 1;
+	while(isdigit(*temp_pointer)) {
+	  temp_pointer++;
+	}
+	strcpy(temp, temp_pointer);
+	strcpy(token, temp);
+	continue;
+      }
+
+      /* Start of a variation? */
+      if(token[0] == '(') {
+	strcpy(temp, token + 1);
+	strcpy(token, temp);
+	if(!entered_variation) {
+	  strcat(*notation, " ");
+	}
+	strcat(*notation, "(");
+
+	/* create child variation */
+	new = (VARIATION*)malloc(sizeof(VARIATION));
+	new->parent = current;
+	new->siblings = new->children = 0;
+	new->parent_move = current->relative_move - 2;
+	new->actual_move = current->actual_move - 1;
+	new->relative_move = 1;
+	new->to_play = (current->to_play == WHITE) ? BLACK : WHITE;
+
+	for(col = 0; col < 8; col++) {
+	  for(row = 0; row < 8; row++) {
+	    new->board[col][row] = current->previous_board[col][row];
+	  }
+	}
+	new->id = new_id++;
+	new->buffer_size = 1024;
+	new->buffer = (char*)calloc(new->buffer_size, sizeof(char));
+	sprintf(new->buffer, "moves[%d] = new Array(", new->id);
+      
+	/* add variation to tree */
+	if(current->children) {
+	  current = current->children;
+	  while(current->siblings) {
+	    current = current->siblings;
+	  }      
+	  current->siblings = new;
+	}
+	else {
+	  current->children = new;
+	}
+
+	/* make current variation */
+	current = new;
+	entered_variation = TRUE;
+	left_variation = FALSE;
+	continue;
+      }
+
+      /* end of variation? */
+      if(token[0] == ')') {
+	strcpy(temp, token + 1);
+	strcpy(token, temp);
+	strcat(*notation, ")");
+
+	/* terminate variation */
+	if(current->parent) {
+	  strcat(current->buffer, "-1,-1,-1,-1);\n");
+	  current = current->parent;
+	}
+
+	entered_variation = FALSE;
+	left_variation = TRUE;
+	continue;
+      }
+
+      /* move number? */
+      if(isdigit(token[0]) || token[0] == '.') {
+	strcpy(temp, token + 1);
+	strcpy(token, temp);
+	continue;
+      }
+     
+#ifdef DEBUG
+      printf("Move token: \"%s\"\n", token);
+#endif
+
+      /* parse move */
+      strcpy(temp, token);
+      temp_pointer = temp;
+      while(isalnum(*temp_pointer) || *temp_pointer == '+' || *temp_pointer == '-' || *temp_pointer == '#' || *temp_pointer == '=') {
+	temp_pointer++;
+      }
+      strcpy(token, temp_pointer);
+      *temp_pointer = '\0';
+      strcpy(move, temp);
+
+#ifdef DEBUG
+      printf("Move: \"%s\"\n", move);
+#endif
+
+      /* convert move */
+      if(!entered_variation) {
+	strcat(*notation, " ");
+      }
+
+      if(current->to_play == WHITE) {
+	sprintf(*notation + strlen(*notation), "%d.", (current->actual_move + 1) / 2);
+      }
+      else {
+	if(current->relative_move == 1) {
+	  sprintf(*notation + strlen(*notation), "%d... ", (current->actual_move + 1) / 2);
+	}
+	if(left_variation) {
+	  strcat(*notation, "... ");
+	}
+      } 
+
+      sprintf(*notation + strlen(*notation), "<a class=\"move\" href=\"javascript:jumpto(%d, %d);\" id=\"v%dm%d\">%s</a>", current->id, current->relative_move, current->id, current->relative_move, move);
+
+      movepair = convert_move(move, current->to_play, current->board);      
+      append_move(current->buffer, movepair);
+      
+      /* execute move */
+      for(col = 0; col < 8; col++) {
+	for(row = 0; row < 8; row++) {
+	  current->previous_board[col][row] = current->board[col][row];
+	}
+      }
+      make_move(movepair, current->board);
+      left_variation = FALSE;
+      entered_variation = FALSE;
+      current->actual_move++;
+      current->relative_move++;
+      current->to_play = (current->to_play == WHITE) ? BLACK : WHITE;
     }
   }
 
-  sprintf(*moves + strlen(*moves), "-1,-1,-1,-1);\n");
+  /* delete tree structure merging buffers into moves buffer */
+  *moves = (char*)calloc(1, sizeof(char));
+  **moves = '\0';
+  moves_size = 1;
+  delete_variation(root, moves, &moves_size);
 }
 
 /* strips comments and variations (including NAGs) */
