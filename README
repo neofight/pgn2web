@@ -20,15 +20,13 @@ you to replay the game(s) within a web browser. This software is
 intended as a free cross-platform replacement for existing non-free
 conversion programs.
 
-2. Known Issues (version 0.1)
+2. Known Issues (version 0.2)
 -----------------------------
 
-This is the first release, there may be many bugs but on the whole it
-should be fairly usable. The only major short-coming is that pgn2web
-is unable to deal with games that start from non-standard positions
-e.g. fischer-random or chess puzzles etc. Currently, variations and
-comments are stripped out. Missing functionality and bugs will be
-corrected in future versions.
+This is only the second release, there may be many bugs but on the
+whole it should be fairly usable. Currently, variations and comments
+are stripped out. Missing functionality and bugs will be corrected in
+future versions.
 
 Please email any bug reports, comments, or suggestions to me@whoggarth.com
 
@@ -41,39 +39,15 @@ Linux
 The installation is fairly standard. Simply untar the archive, change
 to the resulting directory, type make, switch to root and type make install.
 
-Windows
-~~~~~~~
-
-Unzip the zip file. Run INSTALL.BAT. Then:
-
-For Windows95/98/ME:
-
-Simply reboot.
-
-For WindowsXP:
-
-Open the Control Panel. Double-click on the System icon, click on the
-Advanced tab and press the Environment Variables button. In either the
-User or System-wide list select the item "Path" and press edit. Add to
-the end of the line labelled "Variable Value" the following:
-
-;C:\Program Files\pgn2web
-
 4. Usage
 --------
 
-pgn2web is a command line program. To use the command line in Windows
-go to the Start menu click on Run, type COMMAND and press enter.
-
 The syntax for pgn2web is as follows:
-
-pgn2web --copy-images 
-
-Copies a folder containing the required graphics to the current directory.
 
 pgn2web <pgn file> <html file>
 
-Generates a html file for each game in the PGN file.
+Generates a html file for each game in the PGN file, and creates a
+folder containing the required images.
 
 5. Acknowledgements
 -------------------
