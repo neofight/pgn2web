@@ -22,10 +22,12 @@
 #define BOOL_H
 
 #ifndef __cplusplus
+#ifndef __OBJC__
 
 /* defines boolean type */
 typedef enum {false, true} bool;
 
+#endif
 #endif
 
 #endif
