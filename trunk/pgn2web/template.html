@@ -1,0 +1,296 @@
+<html>
+<head>
+<style>
+a.move {color: black; text-decoration: none}
+</style>
+<script language="javascript" type="text/javascript">
+
+//image data
+var pieces = new Array("sq", "wp", "wn", "wb", "wr", "wq", "wk", "bp", "bn", "bb", "br", "bq", "bk");
+
+wsq = new Image();
+wsq.src = "images/wsq.gif";
+wwp = new Image();
+wwp.src = "images/wwp.gif";
+wwn = new Image();
+wwn.src = "images/wwn.gif";
+wwb = new Image();
+wwb.src = "images/wwb.gif";
+wwr = new Image();
+wwr.src = "images/wwr.gif";
+wwq = new Image();
+wwq.src = "images/wwq.gif";
+wwk = new Image();
+wwk.src = "images/wwk.gif";
+wbp = new Image();
+wbp.src = "images/wbp.gif";
+wbn = new Image();
+wbn.src = "images/wbn.gif";
+wbb = new Image();
+wbb.src = "images/wbb.gif";
+wbr = new Image();
+wbr.src = "images/wbr.gif";
+wbq = new Image();
+wbq.src = "images/wbq.gif";
+wbk = new Image();
+wbk.src = "images/wbk.gif";
+bsq = new Image();
+bsq.src = "images/bsq.gif";
+bwp = new Image();
+bwp.src = "images/bwp.gif";
+bwn = new Image();
+bwn.src = "images/bwn.gif";
+bwb = new Image();
+bwb.src = "images/bwb.gif";
+bwr = new Image();
+bwr.src = "images/bwr.gif";
+bwq = new Image();
+bwq.src = "images/bwq.gif";
+bwk = new Image();
+bwk.src = "images/bwk.gif";
+bbp = new Image();
+bbp.src = "images/bbp.gif";
+bbn = new Image();
+bbn.src = "images/bbn.gif";
+bbb = new Image();
+bbb.src = "images/bbb.gif";
+bbr = new Image();
+bbr.src = "images/bbr.gif";
+bbq = new Image();
+bbq.src = "images/bbq.gif";
+bbk = new Image();
+bbk.src = "images/bbk.gif";
+
+//data
+<initial/>
+<moves/>
+
+//initial position
+var move = 0;
+<board/>
+
+function domove()
+{
+  var source = moves[move * 4];
+  var destination = moves[move * 4 + 1];
+
+  if(source < 0)
+  {
+    return;
+  }
+
+  board[destination] = board[source];
+  board[source] = 0;
+
+  if(moves[move * 4 + 2] < -1)
+  {
+    board[destination] = - moves[move * 4 + 2];
+  }
+
+  source = moves[move * 4 + 2];
+  destination = moves[move * 4 + 3];
+
+  if(source >= 0)
+  {
+    board[destination] = board[source];
+    board[source] = 0;
+  }
+
+  move++;
+}
+
+function jumpto(target)
+{ 
+  unhighlight();
+  reset();
+
+  while(move != target) {
+    domove();
+  }
+
+  update();
+}
+
+function reset()
+{
+  move = 0;
+
+  for(square = 0; square < 64; square++)
+  {
+    board[square] = initial[square];
+  }
+}
+
+function unhighlight()
+{
+  if(move > 0)
+  {
+    document.getElementById("m" + move).style.background = "white";
+  }
+}
+
+function update()
+{
+  for(square = 0; square < 64; square++)
+  {
+    document.getElementById("s" + square).src = "images/" + (((square % 8 + Math.floor(square / 8)) % 2) ? "b" : "w") + pieces[board[square]] + ".gif";
+  }
+
+  if(move != 0)
+  {
+    document.getElementById("m" + move).style.background = "silver";
+  }
+}
+
+function first()
+{
+  unhighlight();
+  reset();
+  update();
+}
+
+function backward()
+{
+  unhighlight();
+  if(move > 0)
+  {
+    jumpto(move - 1);
+  }
+}
+
+function forward()
+{
+  unhighlight();
+  domove();
+  update();
+}
+
+function last()
+{
+  unhighlight();
+  while(moves[move * 4] != -1)
+  {
+    domove();
+  }
+  update();
+}
+
+</script>
+</head>
+<body>
+<h2>
+<white/>
+-
+<black/>
+<date/>
+</h2>
+<h3>
+<round/>
+<event/>
+<site/>
+</h3>
+
+<SELECT NAME="" onchange="location=this.value">
+<option value="">Select a game...
+<gamelist/>
+</SELECT>
+
+<p><table><tr>
+<td align="center" valign="top">
+<table style="border: double; padding: 1" cellpadding="0" cellspacing="0" width="288" height="288">
+<tr>
+<td width="36" height="36"><img id="s0" src="images/wbr.gif"></td>
+<td width="36" height="36"><img id="s1" src="images/bbn.gif"></td>
+<td width="36" height="36"><img id="s2"src="images/wbb.gif"></td>
+<td width="36" height="36"><img id="s3"src="images/bbq.gif"></td>
+<td width="36" height="36"><img id="s4"src="images/wbk.gif"></td>
+<td width="36" height="36"><img id="s5"src="images/bbb.gif"></td>
+<td width="36" height="36"><img id="s6"src="images/wbn.gif"></td>
+<td width="36" height="36"><img id="s7"src="images/bbr.gif"></td>
+</tr>
+<tr>
+<td width="36" height="36"><img id="s8" src="images/bbp.gif"></td>
+<td width="36" height="36"><img id="s9" src="images/wbp.gif"></td>
+<td width="36" height="36"><img id="s10" src="images/bbp.gif"></td>
+<td width="36" height="36"><img id="s11" src="images/wbp.gif"></td>
+<td width="36" height="36"><img id="s12" src="images/bbp.gif"></td>
+<td width="36" height="36"><img id="s13" src="images/wbp.gif"></td>
+<td width="36" height="36"><img id="s14" src="images/bbp.gif"></td>
+<td width="36" height="36"><img id="s15" src="images/wbp.gif"></td>
+</tr>
+<tr>
+<td width="36" height="36"><img id="s16" src="images/wsq.gif"></td>
+<td width="36" height="36"><img id="s17" src="images/bsq.gif"></td>
+<td width="36" height="36"><img id="s18" src="images/wsq.gif"></td>
+<td width="36" height="36"><img id="s19" src="images/bsq.gif"></td>
+<td width="36" height="36"><img id="s20" src="images/wsq.gif"></td>
+<td width="36" height="36"><img id="s21" src="images/bsq.gif"></td>
+<td width="36" height="36"><img id="s22" src="images/wsq.gif"></td>
+<td width="36" height="36"><img id="s23" src="images/bsq.gif"></td>
+</tr>
+<tr>
+<td width="36" height="36"><img id="s24" src="images/bsq.gif"></td>
+<td width="36" height="36"><img id="s25" src="images/wsq.gif"></td>
+<td width="36" height="36"><img id="s26" src="images/bsq.gif"></td>
+<td width="36" height="36"><img id="s27" src="images/wsq.gif"></td>
+<td width="36" height="36"><img id="s28" src="images/bsq.gif"></td>
+<td width="36" height="36"><img id="s29" src="images/wsq.gif"></td>
+<td width="36" height="36"><img id="s30" src="images/bsq.gif"></td>
+<td width="36" height="36"><img id="s31" src="images/wsq.gif"></td>
+</tr>
+<tr>
+<td width="36" height="36"><img id="s32" src="images/wsq.gif"></td>
+<td width="36" height="36"><img id="s33" src="images/bsq.gif"></td>
+<td width="36" height="36"><img id="s34" src="images/wsq.gif"></td>
+<td width="36" height="36"><img id="s35" src="images/bsq.gif"></td>
+<td width="36" height="36"><img id="s36" src="images/wsq.gif"></td>
+<td width="36" height="36"><img id="s37" src="images/bsq.gif"></td>
+<td width="36" height="36"><img id="s38" src="images/wsq.gif"></td>
+<td width="36" height="36"><img id="s39" src="images/bsq.gif"></td>
+</tr>
+<tr>
+<td width="36" height="36"><img id="s40" src="images/bsq.gif"></td>
+<td width="36" height="36"><img id="s41" src="images/wsq.gif"></td>
+<td width="36" height="36"><img id="s42" src="images/bsq.gif"></td>
+<td width="36" height="36"><img id="s43" src="images/wsq.gif"></td>
+<td width="36" height="36"><img id="s44" src="images/bsq.gif"></td>
+<td width="36" height="36"><img id="s45" src="images/wsq.gif"></td>
+<td width="36" height="36"><img id="s46" src="images/bsq.gif"></td>
+<td width="36" height="36"><img id="s47" src="images/wsq.gif"></td>
+</tr>
+<tr>
+<td width="36" height="36"><img id="s48" src="images/wwp.gif"></td>
+<td width="36" height="36"><img id="s49" src="images/bwp.gif"></td>
+<td width="36" height="36"><img id="s50" src="images/wwp.gif"></td>
+<td width="36" height="36"><img id="s51" src="images/bwp.gif"></td>
+<td width="36" height="36"><img id="s52" src="images/wwp.gif"></td>
+<td width="36" height="36"><img id="s53" src="images/bwp.gif"></td>
+<td width="36" height="36"><img id="s54" src="images/wwp.gif"></td>
+<td width="36" height="36"><img id="s55" src="images/bwp.gif"></td>
+</tr>
+<tr>
+<td width="36" height="36"><img id="s56" src="images/bwr.gif"></td>
+<td width="36" height="36"><img id="s57" src="images/wwn.gif"></td>
+<td width="36" height="36"><img id="s58" src="images/bwb.gif"></td>
+<td width="36" height="36"><img id="s59" src="images/wwq.gif"></td>
+<td width="36" height="36"><img id="s60" src="images/bwk.gif"></td>
+<td width="36" height="36"><img id="s61" src="images/wwb.gif"></td>
+<td width="36" height="36"><img id="s62" src="images/bwn.gif"></td>
+<td width="36" height="36"><img id="s63" src="images/wwr.gif"></td>
+</tr>
+</table>
+<p>
+<input type="button" value=" |< " onclick="first()">
+<input type="button" value=" < " onclick="backward()">
+<input type="button" value=" > " onclick="forward()">
+<input type="button" value=" >| " onclick="last()">
+</td>
+<td valign="top">
+<notation/>
+<b>
+<result/>
+</b>
+</td>
+</tr></table>
+</body>
+</html>
