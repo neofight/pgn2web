@@ -21,13 +21,13 @@
 #include "bool.h"
 
 /* typdefs for discrete parameters */
-typedef enum { frameset, linked, individual } structure;
+typedef enum { FRAMESET, LINKED, INDIVIDUAL } STRUCTURE;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, const char *pieces, structure structure);
+int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, const char *pieces, STRUCTURE layout);
 
 #ifdef __cplusplus
 }

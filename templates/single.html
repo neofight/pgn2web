@@ -61,12 +61,17 @@ bqbs.src = "<pieces/>/bqbs.png";
 bkbs = new Image();
 bkbs.src = "<pieces/>/bkbs.png";
 
-
 //initial/current position
 var variation = 0;
 var move = 0;
 var flipped = false;
 var board = new Array(10,8,9,11,12,9,8,10,7,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,4,2,3,5,6,3,2,4);
+
+//Start position, moves and variations
+<initial/>
+parents = new Array();
+moves = new Array();
+<moves/>
 
 //initial timerID
 var intervalID = -1;
@@ -99,8 +104,8 @@ function flip()
 
 function domove()
 {
-  var source = parent.game.moves[variation][move * 4];
-  var destination = parent.game.moves[variation][move * 4 + 1];
+  var source = moves[variation][move * 4];
+  var destination = moves[variation][move * 4 + 1];
 
   if(source < 0)
   {
@@ -116,13 +121,13 @@ function domove()
   board[destination] = board[source];
   board[source] = 0;
 
-  if(parent.game.moves[variation][move * 4 + 2] < -1)
+  if(moves[variation][move * 4 + 2] < -1)
   {
-    board[destination] = - parent.game.moves[variation][move * 4 + 2];
+    board[destination] = - moves[variation][move * 4 + 2];
   }
 
-  source = parent.game.moves[variation][move * 4 + 2];
-  destination = parent.game.moves[variation][move * 4 + 3];
+  source = moves[variation][move * 4 + 2];
+  destination = moves[variation][move * 4 + 3];
 
   if(flipped)
   {
@@ -149,12 +154,12 @@ function jumpto(target_variation, target_move)
   {
     route = target_variation;
 
-    while(parent.game.parents[route][0] != variation)
+    while(parents[route][0] != variation)
     {
-      route = parent.game.parents[route][0];
+      route = parents[route][0];
     }
 
-    while(move != parent.game.parents[route][1])
+    while(move != parents[route][1])
     {
       domove();
     }
@@ -180,11 +185,11 @@ function reset()
   {
     if(flipped)
     {
-      board[square] = parent.game.initial[63 - square];
+      board[square] = initial[63 - square];
     }
     else
     {
-      board[square] = parent.game.initial[square];
+      board[square] = initial[square];
     }
   }
 }
@@ -193,7 +198,7 @@ function unhighlight()
 {
   if(move > 0)
   {
-    parent.game.document.getElementById("v" + variation + "m" + move).style.background = "white";
+    document.getElementById("v" + variation + "m" + move).style.background = "white";
   }
 }
 
@@ -206,7 +211,7 @@ function update()
 
   if(move != 0)
   {
-    parent.game.document.getElementById("v" + variation + "m" + move).style.background = "silver";
+    document.getElementById("v" + variation + "m" + move).style.background = "silver";
   }
 }
 
@@ -225,13 +230,13 @@ function backward()
   }
   else
   {
-    if(parent.game.parents[variation][0] == -1)
+    if(parents[variation][0] == -1)
     {
       jumpto(0, 0);
     }
     else
     {
-      jumpto(parent.game.parents[variation][0], parent.game.parents[variation][1]);
+      jumpto(parents[variation][0], parents[variation][1]);
     }
   }
 }
@@ -246,7 +251,7 @@ function forward()
 function last()
 {
   unhighlight();
-  while(parent.game.moves[variation][move * 4] != -1)
+  while(moves[variation][move * 4] != -1)
   {
     domove();
   }
@@ -255,7 +260,11 @@ function last()
 
 </script>
 </head>
-<body>
+<body onLoad="reset(); update();">
+
+<table><tr>
+
+<td valign="top">
 <table>
 <tr><td align="center" valign="top">
 <gamelist/>
@@ -364,5 +373,29 @@ function last()
 <br><small><credit/></small>
 </td><tr>
 </table>
+</td>
+
+<td>&nbsp;</td>
+
+<td valign="top">
+<h2>
+<white/>
+-
+<black/>
+<date/>
+</h2>
+<h3>
+<round/>
+<event/>
+<site/>
+</h3>
+<p>
+<notation/>
+<b>
+<result/>
+</b>
+</td>
+
+</tr></table>
 </body>
 </html>

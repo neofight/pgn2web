@@ -75,7 +75,8 @@ const char *template_filename = "templates" SEPERATOR_STRING "template.html";
 #else
 const char *board_template = INSTALL_PATH "templates" SEPERATOR_STRING "board.html";
 const char *frame_template = INSTALL_PATH "templates" SEPERATOR_STRING "frame.html";
-const char *template_filename = INSTALL_PATH "templates" SEPERATOR_STRING "template.html";
+const char *game_filename = INSTALL_PATH "templates" SEPERATOR_STRING "template.html";
+const char *single_filename = INSTALL_PATH "templates" SEPERATOR_STRING "single.html";
 #endif
 
 /* function prototypes */
@@ -87,15 +88,16 @@ MOVE extract_coordinates(const char* algebraic);
 void extract_game_list(FILE* file, const char* html_filename, char** game_list); /* !! allocates memory which must be freed by caller !! */
 void print_board(FILE* html, const char* FEN);
 void print_initial_position(FILE* file, const char* FEN, const char* var);
-void process_game(FILE *pgn, FILE *template, const char *html_filename, const int game, const char* game_list);
-void process_moves(FILE* pgn, const char* FEN, char **moves, char **notation); /* !! allocates memory which must be freed by caller !! */
+void process_game(FILE *pgn, FILE *template, const char *html_filename, const int game, const char *pieces, const char* game_list, bool credit, STRUCTURE layout);
+void process_moves(FILE* pgn, const char* FEN, char **moves, char **notation, STRUCTURE layout); /* !! allocates memory which must be freed by caller !! */
 void strip(FILE *pgn);
 
 
 /* main function */
 
-int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, const char *pieces, structure structure)
+int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, const char *pieces, STRUCTURE layout)
 {
+  const char *template_filename;
   char *path;
   char *command;
   FILE *pgn, *template;
@@ -107,6 +109,9 @@ int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, co
   if((pgn = fopen(pgn_filename, "r")) == NULL) {
       exit(1);
   }
+
+  /* select and open the right template file */
+  template_filename = (layout == FRAMESET) ? game_filename : single_filename;
 
   if((template = fopen(template_filename, "r")) == NULL) {
     perror("Unable to open template file");
@@ -158,9 +163,11 @@ int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, co
   umask(0133);
 #endif
 
-  /* create board page & frameset */
-  create_board(board_template, html_filename, pieces, game_list, credit);
-  create_frame(frame_template, html_filename);
+  /* if frameset layout then create board & frameset pages */
+  if(layout == FRAMESET) {
+    create_board(board_template, html_filename, pieces, game_list, credit);
+    create_frame(frame_template, html_filename);
+  }
 
   /* skip any whitespace (or garbage) */
   while((test = getc(pgn)) != '[' && test != EOF) {
@@ -172,7 +179,7 @@ int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, co
     rewind(template); /* go back to start of template */
   
     /* process game */
-    process_game(pgn, template, html_filename, game, game_list);
+    process_game(pgn, template, html_filename, game, pieces, game_list, credit, layout);
     game++;
 
     /* skip remaining whitespace (and any garbage) */
@@ -300,8 +307,11 @@ void create_board(const char* template_filename, const char *html_filename, cons
       fprintf(board, "%s", tag + strlen("<pieces/>"));
     }
 
+
     if(strstr(buffer, "<gamelist/>")) {
-      fprintf(board, "%s", game_list);
+	fprintf(board, "<SELECT name=\"game\" onchange=\"if(this.value != 'null') parent.game.location=this.value;\">\n");
+	fprintf(board, "<option value=\"null\">Select a game...\n");
+	fprintf(board, "%s\n", game_list);
     }
   }
 
@@ -587,13 +597,14 @@ void print_initial_position(FILE* file, const char* FEN, const char* var)
 }
 
 /* process 1 pgn game */
-void process_game(FILE *pgn, FILE *template, const char *html_filename, int game, const char* game_list)
+void process_game(FILE *pgn, FILE *template, const char *html_filename, int game, const char* pieces, const char* game_list, bool credit, STRUCTURE layout)
 {
   char *game_filename;
   char game_index[32];
   FILE *html;
 
   char buffer[256];
+  char *tag;
   char event[256];
   char site[256];
   char date[256];
@@ -650,7 +661,7 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
   }
 
   /* process move text */
-  process_moves(pgn, FEN, &moves, &notation); /* !! allocates memory for move and notation, must be freed by caller !! */
+  process_moves(pgn, FEN, &moves, &notation, layout); /* !! allocates memory for move and notation, must be freed by caller !! */
 
   /* process template file, replacing XML-like tags */
   while(fgets(buffer, 256, template) != NULL) {
@@ -671,7 +682,20 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
 	fprintf(html, "%s\n", event);
       }
       if(strstr(buffer, "<gamelist/>")) {
-	fprintf(html, "%s\n", game_list);
+	switch(layout) {
+	case FRAMESET:
+	  fprintf(html, "<SELECT name=\"game\" onchange=\"if(this.value != 'null') parent.game.location=this.value;\">\n");
+	  fprintf(html, "<option value=\"null\">Select a game...\n");
+	  fprintf(html, "%s\n", game_list);
+	  break;
+	case LINKED:
+	  fprintf(html, "<SELECT name=\"game\" onchange=\"if(this.value != 'null') location=this.value;\">\n");
+          fprintf(html, "<option value=\"null\">Select a game...\n");
+          fprintf(html, "%s\n", game_list);
+          break;
+	case INDIVIDUAL:
+	  break;
+	}
       }
       if(strstr(buffer, "<initial/>")) {
 	print_initial_position(html, FEN, "initial");
@@ -694,6 +718,20 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
       if(strstr(buffer, "<white/>")) {
 	fprintf(html, "%s\n", white);
       }
+      if((tag = strstr(buffer, "<credit/>"))) {
+        *tag = '\0';
+        fprintf(html, "%s", buffer);
+        if(credit) {
+          fprintf(html, credit_html);
+        }
+        fprintf(html, "%s", tag + strlen("<credit/>"));
+      }
+      if((tag = strstr(buffer, "<pieces/>"))) {
+        *tag = '\0';
+        fprintf(html, "%s", buffer);
+        fprintf(html, pieces);
+        fprintf(html, "%s", tag + strlen("<pieces/>"));
+      }
     }
   }
 
@@ -707,7 +745,7 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
 }
 
 /* create html & javascript data for moves in pgn file */
-void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /* !! allocates memory which must be freed by caller !! */
+void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation, STRUCTURE layout) /* !! allocates memory which must be freed by caller !! */
 {
   VARIATION *root, *current, *new;
   int new_id = 0;
@@ -953,7 +991,12 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 	}
       } 
 
-      sprintf(*notation + strlen(*notation), "<a class=\"move\" href=\"javascript:parent.board.jumpto(%d, %d);\" id=\"v%dm%d\">%s</a>", current->id, current->relative_move, current->id, current->relative_move, move_string);
+      if(layout == FRAMESET) {
+	sprintf(*notation + strlen(*notation), "<a class=\"move\" href=\"javascript:parent.board.jumpto(%d, %d);\" id=\"v%dm%d\">%s</a>", current->id, current->relative_move, current->id, current->relative_move, move_string);
+      }
+      else {
+	sprintf(*notation + strlen(*notation), "<a class=\"move\" href=\"javascript:jumpto(%d, %d);\" id=\"v%dm%d\">%s</a>", current->id, current->relative_move, current->id, current->relative_move, move_string);
+      }
       append_move(current->buffer, &move, &current->position);
       
       /* execute move */

@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
   bool in_options = true;
   int arg;
   bool credit_set = false;
-  bool structure_set = false;
+  bool layout_set = false;
   int pgn_filename = 0;
   int html_filename = 0;
   int pieces = 0;
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 
   /* default options */
   bool credit = true;
-  structure layout = frameset;
+  STRUCTURE layout = FRAMESET;
 
   /* if no arguments provided then launch gui */
   if(argc == 1) {
@@ -109,12 +109,31 @@ int main(int argc, char *argv[])
 	}
       }
 	
-      if(!structure_set && !strcmp("-s", argv[arg])) {
+      if(!layout_set && !strcmp("-s", argv[arg])) {
 
-	/* set structure here */
-	structure_set = true;
-	arg += 2;
-	continue;
+	if(!strcmp("frameset", argv[arg + 1])) {
+	  layout_set = true;
+	  layout = FRAMESET;
+	  arg += 2;
+	  continue;
+	} 
+
+	if(!strcmp("linked", argv[arg + 1])) {
+	  layout_set = true;
+	  layout = LINKED;
+	  arg += 2;
+	  continue;
+	}
+
+	if(!strcmp("individual", argv[arg + 1])) {
+	  layout_set = true;
+	  layout = INDIVIDUAL;
+	  arg += 2;
+	  continue;
+	}
+
+	valid = false;
+	break;
       }
 
       /* invalid option as there is no match */
