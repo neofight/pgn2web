@@ -160,11 +160,6 @@ int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, co
   extract_game_list(pgn, html_filename, &game_list); /* !! allocates memory to game_list, free after use !! */
   rewind(pgn);
 
-  /* ensure created files have access of 0644 */
-#ifndef WINDOWS
-  umask(0133);
-#endif
-
   /* if frameset layout then create board & frameset pages */
   if(layout == FRAMESET) {
     create_board(board_template, html_filename, pieces, game_list, credit);
