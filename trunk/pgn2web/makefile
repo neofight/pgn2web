@@ -7,7 +7,7 @@ chess.o: chess.c chess.h
 cli.o: cli.c pgn2web.h
 	gcc -Wall -c cli.c
 
-gui.o : gui.cpp pgn2web.h
+gui.o : gui.cpp gui.h pgn2web.h
 	g++ -Wall -c gui.cpp `wx-config --cxxflags`
 
 pgn2web.o: pgn2web.c pgn2web.h chess.h nag.h
@@ -25,7 +25,7 @@ chess.do: chess.c chess.h
 cli.do: cli.c pgn2web.h
 	gcc -Wall -o cli.do -c -g -DDEBUG cli.c
 
-gui.do : gui.cpp pgn2web.h
+gui.do : gui.cpp gui.h pgn2web.h
 	g++ -Wall -o gui.do -c -g -DDEBUG gui.cpp `wx-config --cxxflags`
 
 pgn2web.do: pgn2web.c pgn2web.h chess.h nag.h
