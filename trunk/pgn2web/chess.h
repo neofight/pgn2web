@@ -21,9 +21,9 @@
 #ifndef _CHESS_H_
 #define _CHESS_H_
 
-/* typedefs */
-typedef enum {false, true} bool;
+#include "bool.h"
 
+/* typedefs */
 typedef enum {NO_COLOUR, WHITE, BLACK} COLOUR;
 typedef enum {NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING} PIECE_TYPE;
 typedef enum {NO_PIECE, WPAWN, WKNIGHT, WBISHOP, WROOK, WQUEEN, WKING, BPAWN, BKNIGHT, BBISHOP, BROOK, BQUEEN, BKING} PIECE;

@@ -156,7 +156,7 @@ void p2wPanel::Convert(wxCommandEvent cEvent) {
     }
   }
 
-  pgn2web(m_pcPGNTextCtrl->GetValue(), m_pcHTMLTextCtrl->GetValue());
+  pgn2web(m_pcPGNTextCtrl->GetValue(), m_pcHTMLTextCtrl->GetValue(), true, "merida", frameset);
 }
 
 //bring up filebrowser to select a file
