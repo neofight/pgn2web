@@ -1,7 +1,7 @@
 /*
   pgn2web - Converts PGN files to interactive web pages
 
-  Copyright (C) 2004 William Hoggarth <email: whoggarth@users.sourceforge.net>
+  Copyright (C) 2004, 2005 William Hoggarth <email: whoggarth@users.sourceforge.net>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "chess.h"
 #include "nag.h"
 
 /* default installation path */
@@ -44,34 +45,6 @@ const char SEPERATOR = '/';
 #define SEPERATOR_STRING "/"
 #endif
 
-/* type definitions */
-typedef enum { FALSE, TRUE } BOOL;
-
-/* chess type definitions */
-typedef enum { NEITHER, WHITE, BLACK } COLOUR;
-
-typedef enum { NONE,
-	       WPAWN, WKNIGHT, WBISHOP, WROOK, WQUEEN, WKING,
-	       BPAWN, BKNIGHT, BBISHOP, BROOK, BQUEEN, BKING } PIECE;
-
-typedef struct { 
-  int from_col;
-  int from_row;
-  int to_col;
-  int to_row;
-} MOVE;
-
-typedef struct {
-  MOVE move_1;
-  MOVE move_2;
-} MOVEPAIR;
-
-typedef struct {
-  int col_vector;
-  int row_vector;
-  int range;
-} MOVEVECTOR;
-
 /* variation type definition */
 typedef struct variation {
   struct variation *parent;
@@ -79,40 +52,17 @@ typedef struct variation {
   struct variation *children;
 
   int parent_move;
-  COLOUR to_play;
   int actual_move;
   int relative_move;
-  PIECE board[8][8];
-  PIECE previous_board[8][8];
+  POSITION position;
+  POSITION previous_position;
 
   int id;
   char *buffer;
   long int buffer_size;
 } VARIATION;
 
-/* chess constants */
-const MOVEPAIR WCASTLEKINGSIDE = { { 4, 7, 6, 7 },
-				   { 7, 7, 5, 7 } };
-
-const MOVEPAIR WCASTLEQUEENSIDE = { { 4, 7, 2, 7 },
-				    { 0, 7, 3, 7 } };
-
-const MOVEPAIR BCASTLEKINGSIDE = { { 4, 0, 6, 0 },
-				   { 7, 0, 5, 0 } };
-
-const MOVEPAIR BCASTLEQUEENSIDE = { { 4, 0, 2, 0 },
-				    { 0, 0, 3, 0 } };
-
-MOVEVECTOR MOVEVECTORS[5][8] = {
-  { {1, 2, 1}, {2, 1, 1},  {2, -1, 1},  {1, -2, 1}, {-1, -2, 1}, {-2, -1, 1}, {-2, 1, 1},  {-1, 2, 1} },
-  { {1, 1, 7}, {1, -1, 7}, {-1, -1, 7}, {-1, 1, 7}, {0, 0, 0},   {0, 0, 0},   {0, 0, 0},   {0, 0, 0} },
-  { {0, 1, 7}, {1, 0, 7},  {0, -1, 7},  {-1, 0, 7}, {0, 0, 0},   {0, 0, 0},   {0, 0, 0},   {0, 0, 0} },
-  { {0, 1, 7}, {1, 0, 7},  {0, -1, 7},  {-1, 0, 7}, {1, 1, 7},   {1, -1, 7},  {-1, -1, 7}, {-1, 1, 7} },
-  { {0, 1, 1}, {1, 0, 1},  {0, -1, 1},  {-1, 0, 1}, {1, 1, 1},   {1, -1, 1},  {-1, -1, 1}, {-1, 1, 1} }
-};
-
 /* constants */
-const char *initial_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const char *piece_filenames[] = {"sq", "wp", "wn", "wb", "wr", "wq", "wk", "bp", "bn", "bb", "br", "bq", "bk"};
 
 #ifdef DEBUG
@@ -126,20 +76,12 @@ const char *const template_filename = INSTALL_PATH "templates" SEPERATOR_STRING 
 #endif
 
 /* function prototypes */
-void append_move(char* string, const MOVEPAIR movepair);
+void append_move(char *string, const MOVE *move, const POSITION *position);
 void create_board(const char* board_filename, const char *html_filename, const char* game_list);
 void create_frame(const char* frame_filename, const char* html_filename); 
-MOVEPAIR convert_move(const char* algebraic, const COLOUR turn, const PIECE board[8][8]);
 void delete_variation(VARIATION *variation, char **moves, long int *moves_size);
 MOVE extract_coordinates(const char* algebraic);
 void extract_game_list(FILE* file, const char* html_filename, char** game_list); /* !! allocates memory which must be freed by caller !! */
-void FEN_to_position(const char* FEN, PIECE board[8][8]);
-PIECE get_colour(const PIECE piece);
-MOVEPAIR get_pawn_move(const MOVE move, const COLOUR colour, const PIECE board[8][8]);
-PIECE identify_piece(const COLOUR colour, const char letter);
-BOOL is_legal(const int from_col, const int from_row, const int to_col, const int to_row, const PIECE board[8][8]);
-BOOL is_pinned(const int from_col, const int from_row, int to_col, int to_row, const PIECE board[8][8]);
-void make_move(const MOVEPAIR movepair, PIECE board[8][8]);
 void print_board(FILE* html, const char* FEN);
 void print_initial_position(FILE* file, const char* FEN, const char* var);
 void process_game(FILE *pgn, FILE *template, const char *html_filename, const int game, const char* game_list);
@@ -253,22 +195,53 @@ int main(int argc, char *argv[])
 }
 
 /* append to string move as javascript data */
-void append_move(char* string, const MOVEPAIR movepair)
+void append_move(char *string, const MOVE *move, const POSITION *position)
 {
-  sprintf(string + strlen(string), "%d,%d,", movepair.move_1.from_col + 8 * movepair.move_1.from_row, movepair.move_1.to_col + 8 * movepair.move_1.to_row);
-  string += strlen(string);
+  /* special moves must be broken down into 2 moves for simple javascript code e.g. castling requires moving two pieces */
+  int js_move[4] = {-1, -1, -1, -1};
 
-  if(movepair.move_2.from_col != -1) {
-    if(movepair.move_2.from_col >= 0) {
-      sprintf(string + strlen(string), "%d,%d,", movepair.move_2.from_col + 8 * movepair.move_2.from_row, movepair.move_2.to_col + 8 * movepair.move_2.to_row);
+  js_move[0] = move->from_col + 8 * (7 - move->from_row);
+  js_move[1] = move->to_col + 8 * (7 - move->to_row);
+
+  /* check for special pawn moves */
+  if(piece_to_piece_type(position->board[move->from_col][move->from_row]) == PAWN) {
+
+    /* check if move is a promotion */
+    if(move->promotion_piece) {
+      js_move[2] = -(int)piece_type_and_colour_to_piece(move->promotion_piece, position->turn);
     }
     else {
-      sprintf(string + strlen(string), "%d,-1,", movepair.move_2.from_col);      
+
+      /* check if move is an en passant capture */
+      if(move->to_col == position->ep_col && move->to_row == (position->turn == WHITE ? 5 : 2)) {
+	js_move[2] = js_move[0];
+	js_move[3] = js_move[1];
+	js_move[0] = move->to_col + 8 * (7 - move->from_row);
+	js_move[1] = move->to_col + 8 * (7 - move->to_row);
+      }
     }
   }
   else {
-    sprintf(string + strlen(string), "-1,-1,");
+    
+    /* check if move is a castling move */
+    if(piece_to_piece_type(position->board[move->from_col][move->from_row]) == KING) {
+      
+      /* kingside? */
+      if(move->to_col - move->from_col == 2) {
+	js_move[2] = 7 + 8 * (7 - move->from_row);
+	js_move[3] = js_move[2] - 2;
+      }
+
+      /* queenside? */
+      if(move->from_col - move->to_col == 2) {
+	js_move[2] = 0 + 8 * (7 - move->from_row);
+	js_move[3] = js_move[2] + 3;
+      }
+    }
   }
+
+  /* now write javascript move to string */
+  sprintf(string + strlen(string), "%d,%d,%d,%d,", js_move[0], js_move[1], js_move[2], js_move[3]);
 }
 
 /* creates board child frame from template */
@@ -391,85 +364,6 @@ void create_frame(const char *frame_filename, const char *html_filename)
   free((void*)game_url);
   fclose(template);
   fclose(frame);
-}
-
-/* converts an algebraic move to a set of co-ordinates */
-MOVEPAIR convert_move(const char* algebraic, COLOUR turn, const PIECE board[8][8])
-{
-  PIECE piece;
-  MOVEPAIR movepair;
-  char *equals;
-  char promotion;
-  int col, row;
-
-  /* check for castling moves */
-  if(!strncmp("O-O-O", algebraic, 5)) {
-    movepair = (turn == WHITE) ? WCASTLEQUEENSIDE : BCASTLEQUEENSIDE;
-    return movepair;
-  }
-
-  if(!strncmp("O-O", algebraic, 3)) {
-    movepair = (turn == WHITE) ? WCASTLEKINGSIDE : BCASTLEKINGSIDE;
-    return movepair;
-  }
-
-  /* identify piece */
-  piece = identify_piece(turn, algebraic[0]);
-
-  /* add destination square and any qualifying rows or columns */
-  movepair.move_1 = extract_coordinates(algebraic);
-
-  /* make sure a move is being examined by checking for valid co-ordinates  */
-  if(movepair.move_1.to_col == -1) {
-    movepair.move_2 = movepair.move_1;
-    return movepair;
-  }
-
-  /* process pawn moves */
-  if(piece == WPAWN || piece == BPAWN) {
-    movepair =  get_pawn_move(movepair.move_1, turn, board);
-
-    /* is it a promotion? */
-    if(movepair.move_1.to_row == 0 || movepair.move_1.to_row == 7) {
-      equals = strchr(algebraic, '=');
-      if(equals == NULL) {
-	if(isalpha(algebraic[strlen(algebraic) - 1])) {
-	  promotion = algebraic[strlen(algebraic) - 1];
-	}
-	else {
-	  promotion = algebraic[strlen(algebraic) - 2];
-	}
-      }
-      else {
-        promotion = *(equals + 1);
-      }
-      movepair.move_2.from_col = -identify_piece(turn, promotion);
-    }
-
-    return movepair;
-  }
-
-  /* search for matching piece */
-  for(col = 0; col < 8; col++) {
-    if(movepair.move_1.from_col != -1 && movepair.move_1.from_col != col) {
-      continue;
-    }
-    for(row = 0; row < 8; row++) {
-      if(movepair.move_1.from_row != -1 && movepair.move_1.from_row != row) {
-	continue;
-      }
-
-      /* check the piece is of the right type and can move to the specified square */
-      if(board[col][row] == piece && !is_pinned(col, row, movepair.move_1.to_col, movepair.move_1.to_row, board) && is_legal(col, row, movepair.move_1.to_col, movepair.move_1.to_row, board)) {
-	movepair.move_1.from_col = col;
-	movepair.move_1.from_row = row;
-	movepair.move_2.from_col = movepair.move_2.from_row = movepair.move_2.to_col = movepair.move_2.to_row = -1;
-	break;
-      }
-    }
-  }
-
-  return movepair;
 }
 
 /* deletes a variation adding its data to the moves string */
@@ -648,333 +542,15 @@ void extract_game_list(FILE* file, const char* html_filename, char **game_list) 
   free((void*)url);
 }
 
-/* setup board from FEN position */
-void FEN_to_position(const char* FEN, PIECE board[8][8])
-{
-  const char *position = FEN;
-  char character;
-  int col, row;
-  COLOUR colour;
-
-  /* clear board */
-  for(col = 0; col < 8; col++) {
-    for(row = 0; row < 8; row++) {
-      board[col][row] = NONE;
-    }
-  }
-
-  /* process FEN */
-  col = row = 0;
-
-  while((character = *position) != ' ') {
-    if(character == '/') {
-      col = 0;
-      row++;
-      position++;
-      continue;
-    }
-    
-    if(isdigit(character)) {
-      /* skip specified number of squares */
-      col += character - '0';
-    }
-    else {
-      /* identify piece */
-      colour = isupper(character) ? WHITE : BLACK;
-      character = toupper(character);
-      board[col][row] = identify_piece(colour, character);
-      col++;
-    }
-
-    position++;
-  }
-}
-
-/* return the colour of a piece */
-PIECE get_colour(const PIECE piece)
-{
-  switch(piece) {
-  case WPAWN:
-  case WKNIGHT:
-  case WBISHOP:
-  case WROOK:
-  case WQUEEN:
-  case WKING:
-    return WHITE;
-  case BPAWN:
-  case BKNIGHT:
-  case BBISHOP:
-  case BROOK:
-  case BQUEEN:
-  case BKING:
-    return BLACK;
-  default:
-    return NEITHER;
-  }
-}
-
-/* generates pawn move */
-MOVEPAIR get_pawn_move(MOVE move, COLOUR colour, const PIECE board[8][8])
-{
-  MOVEPAIR pawn_move;
-  int vector = (colour == WHITE) ? 1 : -1;
-
-  pawn_move.move_1 = move;
-  pawn_move.move_2.from_col = pawn_move.move_2.from_row = pawn_move.move_2.to_col = pawn_move.move_2.to_row = -1;
-
-  /* is it a capture? */
-  if(pawn_move.move_1.from_col != -1) {
-    pawn_move.move_1.from_row = pawn_move.move_1.to_row + vector;
-    /* is it an en passant capture? */
-    if(board[pawn_move.move_1.to_col][pawn_move.move_1.to_row] == NONE) {
-      pawn_move.move_2 = pawn_move.move_1;
-      pawn_move.move_1.from_col = pawn_move.move_2.to_col; 
-      pawn_move.move_1.from_row = pawn_move.move_2.to_row + vector;
-      pawn_move.move_1.to_col = pawn_move.move_2.to_col; 
-      pawn_move.move_1.to_row = pawn_move.move_2.to_row;
-    }
-  }
-  else {
-    pawn_move.move_1.from_col = pawn_move.move_1.to_col;
-    /* is it a double move? */
-    if(board[pawn_move.move_1.to_col][pawn_move.move_1.to_row + vector] == NONE) {
-      pawn_move.move_1.from_row = pawn_move.move_1.to_row + vector * 2;
-    }   
-    else {
-      pawn_move.move_1.from_row = pawn_move.move_1.to_row + vector; 
-    }
-  }
-
-    return pawn_move;
-}
-
-/* convert letter and colour to PIECE type */
-PIECE identify_piece(COLOUR colour, char letter)
-{
-  switch(letter) {
-  case 'N':
-    return (colour == WHITE) ? WKNIGHT : BKNIGHT;
-  case 'B':
-    return (colour == WHITE) ? WBISHOP : BBISHOP;
-  case 'R':
-    return (colour == WHITE) ? WROOK : BROOK;
-  case 'Q':
-    return (colour == WHITE) ? WQUEEN : BQUEEN;
-  case 'K':
-    return (colour == WHITE) ? WKING : BKING;
-  default:
-    return (colour == WHITE) ? WPAWN : BPAWN;
-  }
-}
-
-/* is a move legal (ignoring any checks)? */
-BOOL is_legal(const int from_col, const int from_row, const int to_col, const int to_row, const PIECE board[8][8])
-{
-  int piece;
-  int vector;
-  MOVEVECTOR current_vector;
-  int current_col, current_row;
-  BOOL legal = FALSE;
-
-  /* select right MOVEVECTOR array index for piece */ 
-  switch(board[from_col][from_row]) {
-  case WKNIGHT:
-  case BKNIGHT:
-    piece = 0;
-    break;
-  case WBISHOP:
-  case BBISHOP:
-    piece = 1;
-    break;
-  case WROOK:
-  case BROOK:
-    piece = 2;
-    break;
-  case WQUEEN:
-  case BQUEEN:
-    piece = 3;
-    break;
-  case WKING:
-  case BKING:
-    piece = 4;
-    break;
-  default:
-    return FALSE;
-  }
-
-  /*loop through move vectors trying to match moves with the desired destiniation */
-  for(vector = 0; vector < 8; vector++) {
-    current_vector =  MOVEVECTORS[piece][vector];
-    if(current_vector.range == 0) {
-      break;
-    }
-
-    current_col = from_col;
-    current_row = from_row;
-
-    while(current_vector.range--) {
-      current_col += current_vector.col_vector;
-      current_row += current_vector.row_vector;
-
-      /* if off board stop */
-      if(current_col < 0 || current_col > 7 || current_row < 0 || current_row > 7) {
-	break;
-      }
-
-      /* if hit own piece stop*/
-      if(get_colour(board[current_col][current_row]) == get_colour(board[from_col][from_row])) {
-	break;
-      }
-
-      /* check if square matches required destination */
-      if(current_col == to_col && current_row == to_row) {
-	legal = TRUE;
-	break;
-      }
-
-      /* if hit enemy piece stop */
-      if(get_colour(board[current_col][current_row]) != NEITHER) {
-	break;
-      }
-    }
-
-    if(legal) {
-      break;
-    }
-  }
-
-  return legal;  
-}
-
-/* checks if a piece is pinned */
-BOOL is_pinned(const int from_col, const int from_row, int to_col, int to_row, const PIECE board[8][8])
-{
-  PIECE king;
-  int row, col;
-  int king_col, king_row;
-  int col_vector, row_vector;
-
-  /* if piece is king return false */
-  if(board[from_col][from_row] == WKING || board[from_col][from_row] == BKING) {
-    return FALSE;
-  }
-
-  /* locate king */
-  king = (get_colour(board[from_col][from_row]) == WHITE) ? WKING : BKING;
-
-  for(col = 0; col < 8; col++) {
-    for(row = 0; row < 8; row++) {
-      if(king == board[col][row]) {
-	king_col = col;
-	king_row = row;
-	break;
-      }
-    }
-  }
-
-  /* check for direct line */
-  if(from_col != king_col && from_row != king_row && abs(from_col - king_col) != abs(from_row - king_row)) {
-    return FALSE;
-  }
-
-  /* find / generate direction */
-  col_vector = 0;
-  col_vector -= (from_col < king_col) ? 1 : 0;
-  col_vector += (from_col > king_col) ? 1 : 0;
-
-  row_vector = 0;
-  row_vector -= (from_row < king_row) ? 1 : 0;
-  row_vector += (from_row > king_row) ? 1 : 0;
-
-  /* look along direct line for attacking pieces */
-  col = king_col;
-  row = king_row;
-
-  for(;;) {
-    col += col_vector;
-    row += row_vector;
-
-    /* check that we are not off board */
-    if(col < 0 || col > 7 || row < 0 || row > 7) {
-      return FALSE;
-    }
-
-    /* return false if destination square retains the pin */
-    if(col == to_col && row == to_row) {
-      return FALSE;
-    }
-
-    /* continue if empty square */
-    if(board[col][row] == NONE) {
-      continue;
-    }
-
-    /* continue if piece that is being checked */
-    if(col == from_col && row == from_row) {
-      continue;
-    }
-
-    /* return false if piece of same colour */
-    if(get_colour(board[col][row]) == get_colour(board[from_col][from_row])) {
-      return FALSE;
-    }
-
-    /* test if it is a possible checking piece */
-    if(!col_vector || !row_vector) {
-      switch(board[col][row]) {
-      case WQUEEN:
-      case BQUEEN:
-      case WROOK:
-      case BROOK:
-	return TRUE;
-      default:
-	return FALSE;
-      }
-    }
-    else {
-      switch(board[col][row]) {
-      case WQUEEN:
-      case BQUEEN:
-      case WBISHOP:
-      case BBISHOP:
-	return TRUE;
-      default:
-	return FALSE;
-      }
-    }
-  }
-
-  return FALSE;
-}
-
-/* execute move on board */
-void make_move(const MOVEPAIR movepair, PIECE board[8][8])
-{
-  /* first move */
-  board[movepair.move_1.to_col][movepair.move_1.to_row] = board[movepair.move_1.from_col][movepair.move_1.from_row];
-  board[movepair.move_1.from_col][movepair.move_1.from_row] = NONE;
-  
-  /* second move */
-  if(movepair.move_2.to_col >= 0) {
-    board[movepair.move_2.to_col][movepair.move_2.to_row] = board[movepair.move_2.from_col][movepair.move_2.from_row];
-    board[movepair.move_2.from_col][movepair.move_2.from_row] = NONE;
-  }
-
-  /* promotion */
-  if(movepair.move_2.from_col < -1) {
-    board[movepair.move_1.to_col][movepair.move_1.to_row] = -movepair.move_2.from_col;
-  }
-}
-
 /* print HTML for board */
 void print_board(FILE* html, const char* FEN)
 {
-  PIECE board[8][8];
+  POSITION position;
   int col, row;
   char piece[4];
 
   /* convert FEN to position */
-  FEN_to_position(FEN, board);
+  setup_board(&position, FEN);
 
   for(row = 0; row < 8; row++) {
     fprintf(html, "<tr>\n");
@@ -982,7 +558,7 @@ void print_board(FILE* html, const char* FEN)
     for(col = 0; col < 8; col++) {
       /* generate piece filename */
       strcpy(piece, ((col + row) % 2) ? "b" : "w");
-      strcat(piece, piece_filenames[board[col][row]]);
+      strcat(piece, piece_filenames[position.board[col][row]]);
 
       fprintf(html, "<td width=\"36\" height=\"36\"><img id=\"s%d\"src=\"images/%s.gif\"></td>\n", row * 8 + col, piece);
     }
@@ -994,22 +570,22 @@ void print_board(FILE* html, const char* FEN)
 /* output javascript data for initial position */
 void print_initial_position(FILE* file, const char* FEN, const char* var)
 {
-  PIECE board[8][8];
+  POSITION position;
   int col, row;
 
   /* convert FEN to position */
-  FEN_to_position(FEN, board);
+  setup_board(&position, FEN);
 
   /* print out position */
   fprintf(file, "var %s = new Array(", var);
 
-  for(row = 0; row < 8; row++) {
+  for(row = 7; row >= 0; row--) {
     for(col = 0; col < 8; col++) {
-      if(col == 7 && row == 7) {
-	fprintf(file, "%d);\n", board[col][row]);
+      if(col == 7 && row == 0) {
+	fprintf(file, "%d);\n", position.board[col][row]);
       }
       else {
-	fprintf(file, "%d,", board[col][row]);
+	fprintf(file, "%d,", position.board[col][row]);
       }
     }
   }
@@ -1074,7 +650,7 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
 
   /* decide on start position */
   if(*FEN == '\0') {
-    strcpy(FEN, initial_position);
+    strcpy(FEN, INITIAL_POSITION);
   }
 
   /* process move text */
@@ -1142,22 +718,19 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 {
   VARIATION *root, *current, *new;
   int new_id = 0;
-  const char* const_pointer;
   long int moves_size;
   long int notation_size;
 
-  BOOL in_comment = FALSE;
-  BOOL left_comment = FALSE;
-  BOOL left_variation = FALSE;
-  BOOL entered_variation = FALSE;
-  char move[256];
+  bool in_comment = false;
+  bool left_comment = false;
+  bool left_variation = false;
+  bool entered_variation = false;
+  char move_string[256];
   char token[256];
   char temp[256];
   char *temp_pointer;
   int nag;
-  
-  int col, row;
-  MOVEPAIR movepair;
+  MOVE move;
 
   /* create root variation */
   root = (VARIATION*)malloc(sizeof(VARIATION));
@@ -1170,11 +743,9 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
   root->parent_move = 0;
   root->actual_move = 1;
   root->relative_move = 1;
-  const_pointer = FEN;
-  while(*(const_pointer++) != ' ') { }
-  root->to_play = (*const_pointer == 'w') ? WHITE : BLACK;
-  FEN_to_position(FEN, root->board);
 
+  setup_board(&root->position, FEN);
+  
   current = root;
 
   /* allocate notation buffer */
@@ -1221,8 +792,8 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 	  temp_pointer++;
 	  strcpy(temp, temp_pointer);
 	  strcpy(token, temp);
-	  in_comment = FALSE;
-	  left_comment = TRUE;
+	  in_comment = false;
+	  left_comment = true;
 	  continue;
 	}
 	else {
@@ -1241,7 +812,7 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 	strcat(*notation, "\n");
 	strcpy(temp, token + 1);
 	strcpy(token, temp);
-	in_comment = TRUE;
+	in_comment = true;
 	continue;
       }
 
@@ -1291,13 +862,9 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 	new->parent_move = current->relative_move - 2;
 	new->actual_move = current->actual_move - 1;
 	new->relative_move = 1;
-	new->to_play = (current->to_play == WHITE) ? BLACK : WHITE;
 
-	for(col = 0; col < 8; col++) {
-	  for(row = 0; row < 8; row++) {
-	    new->board[col][row] = current->previous_board[col][row];
-	  }
-	}
+	new->position = current->previous_position;
+	
 	new->id = new_id++;
 	new->buffer_size = 1024;
 	new->buffer = (char*)calloc(new->buffer_size, sizeof(char));
@@ -1317,9 +884,9 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 
 	/* make current variation */
 	current = new;
-	entered_variation = TRUE;
-	left_comment = FALSE;
-	left_variation = FALSE;
+	entered_variation = true;
+	left_comment = false;
+	left_variation = false;
 	continue;
       }
 
@@ -1334,8 +901,8 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 	  strcat(current->buffer, "-1,-1,-1,-1);\n");
 	  current = current->parent;
 	}
-	entered_variation = FALSE;
-	left_variation = TRUE;
+	entered_variation = false;
+	left_variation = true;
 	continue;
       }
 
@@ -1363,16 +930,16 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
       }
       strcpy(token, temp_pointer);
       *temp_pointer = '\0';
-      strcpy(move, temp);
+      strcpy(move_string, temp);
 
       /* convert the move, checking for failure */
-      movepair = convert_move(move, current->to_play, current->board);  
-      if(movepair.move_1.to_col == -1) {
+      move = algebraic_to_move(move_string, &current->position);  
+      if(move.from_col == -1) {
 	continue;
       }
 
 #ifdef DEBUG
-      printf("Move: \"%s\"\n", move);
+      printf("Move: \"%s\"\n", move_string);
 #endif
 
       /* convert move */
@@ -1384,7 +951,7 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 	strcat(*notation, "<p><b>");
       }
 
-      if(current->to_play == WHITE) {
+      if(current->position.turn == WHITE) {
 	sprintf(*notation + strlen(*notation), "%d.", (current->actual_move + 1) / 2);
       }
       else {
@@ -1393,22 +960,17 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 	}
       } 
 
-      sprintf(*notation + strlen(*notation), "<a class=\"move\" href=\"javascript:parent.board.jumpto(%d, %d);\" id=\"v%dm%d\">%s</a>", current->id, current->relative_move, current->id, current->relative_move, move);
-      append_move(current->buffer, movepair);
+      sprintf(*notation + strlen(*notation), "<a class=\"move\" href=\"javascript:parent.board.jumpto(%d, %d);\" id=\"v%dm%d\">%s</a>", current->id, current->relative_move, current->id, current->relative_move, move_string);
+      append_move(current->buffer, &move, &current->position);
       
       /* execute move */
-      for(col = 0; col < 8; col++) {
-	for(row = 0; row < 8; row++) {
-	  current->previous_board[col][row] = current->board[col][row];
-	}
-      }
-      make_move(movepair, current->board);
-      left_comment = FALSE;
-      left_variation = FALSE;
-      entered_variation = FALSE;
+      current->previous_position = current->position;
+      make_move(&current->position, &move);
+      left_comment = false;
+      left_variation = false;
+      entered_variation = false;
       current->actual_move++;
       current->relative_move++;
-      current->to_play = (current->to_play == WHITE) ? BLACK : WHITE;
     }
   }
 
