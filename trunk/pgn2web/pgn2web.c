@@ -18,6 +18,8 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+#include "pgn2web.h"
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -88,8 +90,10 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, const in
 void process_moves(FILE* pgn, const char* FEN, char **moves, char **notation); /* !! allocates memory which must be freed by caller !! */
 void strip(FILE *pgn);
 
+
 /* main function */
-int main(int argc, char *argv[])
+
+int pgn2web(const char *pgn_filename, const char *html_filename)
 {
   char *path;
   char *command;
@@ -98,38 +102,29 @@ int main(int argc, char *argv[])
   int game = 0;
   char test;
 
-  printf("%s\n", argv[0]);
-
-  /* check validity of arguments */
-  if(argc != 3) {
-    fprintf(stderr, "Usage: pgn2web pgn-file html-file\n");
-    exit(1);
-  }
-
   /* open files */
-  if((pgn = fopen(argv[1], "r")) == NULL) {
-    perror("Unable to open pgn file");
-    exit(1);
+  if((pgn = fopen(pgn_filename, "r")) == NULL) {
+      exit(1);
   }
 
   if((template = fopen(template_filename, "r")) == NULL) {
     perror("Unable to open template file");
-    exit(1);
+      exit(1);
   }
 
   /* allocate required space for path and command strings */
-  path = (char*)calloc(strlen(argv[2]) + 32, sizeof(char));
-  command = (char*)calloc(strlen(argv[2]) + strlen(INSTALL_PATH) + 32, sizeof(char));
+  path = (char*)calloc(strlen(html_filename) + 32, sizeof(char));
+  command = (char*)calloc(strlen(html_filename) + strlen(INSTALL_PATH) + 32, sizeof(char));
 
   /* copy images */
-  if(strrchr(argv[2], SEPERATOR) == NULL) {
+  if(strrchr(html_filename, SEPERATOR) == NULL) {
     path[0] = '.';
     path[1] = SEPERATOR;
     path[2] = '\0';
   }
   else {
-    strncpy(path, argv[2], strrchr(argv[2], SEPERATOR) - argv[2] + 1);
-    path[strrchr(argv[2], SEPERATOR) - argv[2] + 1] = '\0';
+    strncpy(path, html_filename, strrchr(html_filename, SEPERATOR) - html_filename + 1);
+    path[strrchr(html_filename, SEPERATOR) - html_filename + 1] = '\0';
   }
 
 #ifdef WINDOWS
@@ -150,7 +145,7 @@ int main(int argc, char *argv[])
 #endif
 
   /* extract game list */
-  extract_game_list(pgn, argv[2], &game_list); /* !! allocates memory to game_list, free after use !! */
+  extract_game_list(pgn, html_filename, &game_list); /* !! allocates memory to game_list, free after use !! */
   rewind(pgn);
 
   /* ensure created files have access of 0644 */
@@ -159,8 +154,8 @@ int main(int argc, char *argv[])
 #endif
 
   /* create board page & frameset */
-  create_board(board_template, argv[2], game_list);
-  create_frame(frame_template, argv[2]);
+  create_board(board_template, html_filename, game_list);
+  create_frame(frame_template, html_filename);
 
   /* skip any whitespace (or garbage) */
   while((test = getc(pgn)) != '[' && test != EOF) {
@@ -172,7 +167,7 @@ int main(int argc, char *argv[])
     rewind(template); /* go back to start of template */
   
     /* process game */
-    process_game(pgn, template, argv[2], game, game_list);
+    process_game(pgn, template, html_filename, game, game_list);
     game++;
 
     /* skip remaining whitespace (and any garbage) */
@@ -191,7 +186,7 @@ int main(int argc, char *argv[])
   free((void*)game_list);
 
   /* sucess! */
-  exit(0);
+  return 0;
 }
 
 /* append to string move as javascript data */
