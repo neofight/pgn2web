@@ -67,12 +67,24 @@ int main(int argc, char *argv[])
     /* check for option and process it, else assume filenames */
     if(in_options && argv[arg][0] == '-') {
 
-      if(!credit_set && !strcmp("-l", argv[arg])) {
+      if(!credit_set && !strcmp("-c", argv[arg])) {
 	
-	/* set credit preference here */
-	credit_set = false;
-	arg += 2;
-	continue;
+	if(!strcmp("yes", argv[arg + 1])) {
+	  credit = true;
+	  credit_set = true;
+	  arg +=2;
+	  continue;
+	}
+
+	if(!strcmp("no", argv[arg + 1])) {
+	  credit = false;
+	  credit_set = true;
+	  arg += 2;
+	  continue;
+	}
+
+	valid = false;
+	break;
       }
 
       if(!pieces && !strcmp("-p", argv[arg])) {
@@ -93,6 +105,7 @@ int main(int argc, char *argv[])
 	else {
 	  free((void*)path);
 	  valid = false;
+	  break;
 	}
       }
 	
@@ -110,7 +123,7 @@ int main(int argc, char *argv[])
     } 
     else {
 
-      /* we no expect filename and not options */
+      /* we now expect filename and not options */
       in_options = false;
 
       /* test for an option in the wrong place */
