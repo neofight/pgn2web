@@ -67,6 +67,7 @@ bbk.src = "images/bbk.gif";
 
 //initial/current position
 var move = 0;
+var flipped = false;
 <current/>
 
 //initial timerID
@@ -85,6 +86,19 @@ function autoplay(interval)
   }
 }
 
+function flip()
+{
+  var temp;
+  for(square = 0; square < 32; square++)
+  {
+    temp = board[square];
+    board[square] = board[63 - square];
+    board[63 - square] = temp
+  }
+  flipped = ~flipped;
+  update();  
+}
+
 function domove()
 {
   var source = moves[move * 4];
@@ -93,6 +107,12 @@ function domove()
   if(source < 0)
   {
     return;
+  }
+
+  if(flipped)
+  {
+    source = 63 - source;
+    destination = 63 - destination;
   }
 
   board[destination] = board[source];
@@ -105,6 +125,12 @@ function domove()
 
   source = moves[move * 4 + 2];
   destination = moves[move * 4 + 3];
+
+  if(flipped)
+  {
+    source = 63 - source;
+    destination = 63 - destination;
+  }
 
   if(source >= 0)
   {
@@ -133,7 +159,14 @@ function reset()
 
   for(square = 0; square < 64; square++)
   {
-    board[square] = initial[square];
+    if(flipped)
+    {
+      board[square] = initial[63 - square];
+    }
+    else
+    {
+      board[square] = initial[square];
+    }
   }
 }
 
@@ -204,9 +237,8 @@ function last()
 <input type="button" value=" < " onclick="backward()">
 <input type="button" value=" > " onclick="forward()">
 <input type="button" value=" >| " onclick="last()">
-<p>
-Autoplay:
-<select name="autoplay" onchange="autoplay(this.value)">
+<p>Autoplay:
+<select style="vertical-align: middle" name="autoplay" onchange="autoplay(this.value)">
 <option value="-1">Off
 <option value="1">1s
 <option value="3">3s
@@ -214,6 +246,7 @@ Autoplay:
 <option value="10">10s
 <option value="30">30s
 </select>
+<input style="vertical-align: middle" type="button" value="Flip board" onclick="flip()">
 </td>
 <td valign="top">
 <h2>
