@@ -65,7 +65,7 @@ typedef struct variation {
 } VARIATION;
 
 /* constants */
-const char *piece_filenames[] = {"sq", "wp", "wn", "wb", "wr", "wq", "wk", "bp", "bn", "bb", "br", "bq", "bk"};
+const char *piece_filenames[] = {"", "wp", "wn", "wb", "wr", "wq", "wk", "bp", "bn", "bb", "br", "bq", "bk"};
 
 #ifdef DEBUG
 const char *const board_template = "templates" SEPERATOR_STRING "board.html";
@@ -79,7 +79,7 @@ const char *const template_filename = INSTALL_PATH "templates" SEPERATOR_STRING 
 
 /* function prototypes */
 void append_move(char *string, const MOVE *move, const POSITION *position);
-void create_board(const char* board_filename, const char *html_filename, const char* game_list);
+void create_board(const char *board_filename, const char *html_filename, const char *pieces, const char *game_list);
 void create_frame(const char* frame_filename, const char* html_filename); 
 void delete_variation(VARIATION *variation, char **moves, long int *moves_size);
 MOVE extract_coordinates(const char* algebraic);
@@ -93,7 +93,7 @@ void strip(FILE *pgn);
 
 /* main function */
 
-int pgn2web(const char *pgn_filename, const char *html_filename)
+int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, const char *pieces, structure structure)
 {
   char *path;
   char *command;
@@ -133,12 +133,16 @@ int pgn2web(const char *pgn_filename, const char *html_filename)
   strcat(command, "images\"");
   system(command);
 
-  strcpy(command, "COPY \"" INSTALL_PATH "images\" \"");
+  strcpy(command, "COPY \"" INSTALL_PATH "images" SEPERATOR_STRING);
+  strcat(command, pieces);
+  strcat(command, "\" \"");
   strcat(command, path);
   strcat(command, "images\"");
   system(command);
 #else
-  strcpy(command, "cp -r \"" INSTALL_PATH "images\" \"");
+  strcpy(command, "cp -r \"" INSTALL_PATH "images" SEPERATOR_STRING);
+  strcat(command, pieces);
+  strcat(command, "\" \"");
   strcat(command, path);
   strcat(command, "\"");
   system(command);
@@ -154,7 +158,7 @@ int pgn2web(const char *pgn_filename, const char *html_filename)
 #endif
 
   /* create board page & frameset */
-  create_board(board_template, html_filename, game_list);
+  create_board(board_template, html_filename, pieces, game_list);
   create_frame(frame_template, html_filename);
 
   /* skip any whitespace (or garbage) */
@@ -240,10 +244,11 @@ void append_move(char *string, const MOVE *move, const POSITION *position)
 }
 
 /* creates board child frame from template */
-void create_board(const char* template_filename, const char *html_filename, const char* game_list)
+void create_board(const char* template_filename, const char *html_filename, const char* pieces, const char* game_list)
 {
   char *filename;
   char buffer[256];
+  char *tag;
   FILE *template, *board;
 
   filename = (char*)calloc(strlen(html_filename) + strlen(".board") + 1, sizeof(char));
@@ -272,12 +277,22 @@ void create_board(const char* template_filename, const char *html_filename, cons
 
   /* process template file, replacing XML-like tags */
   while(fgets(buffer, 256, template) != NULL) {
+
+    if(!strstr(buffer, "/>")) {
+      fprintf(board, "%s", buffer);
+      continue;
+    }
+
+    if((tag = strstr(buffer, "<pieces/>"))) {
+      *tag = '\0';
+      fprintf(board, "%s", buffer);
+      fprintf(board, pieces);
+      fprintf(board, "%s", tag + strlen("<pieces/>"));
+    }
+
     if(strstr(buffer, "<gamelist/>")) {
       fprintf(board, "%s", game_list);
     }
-    else {
-      fprintf(board, "%s", buffer);
-    } 
   }
 
   /* close files & free memory*/
@@ -537,31 +552,6 @@ void extract_game_list(FILE* file, const char* html_filename, char **game_list) 
   free((void*)url);
 }
 
-/* print HTML for board */
-void print_board(FILE* html, const char* FEN)
-{
-  POSITION position;
-  int col, row;
-  char piece[4];
-
-  /* convert FEN to position */
-  setup_board(&position, FEN);
-
-  for(row = 0; row < 8; row++) {
-    fprintf(html, "<tr>\n");
-
-    for(col = 0; col < 8; col++) {
-      /* generate piece filename */
-      strcpy(piece, ((col + row) % 2) ? "b" : "w");
-      strcat(piece, piece_filenames[position.board[col][row]]);
-
-      fprintf(html, "<td width=\"36\" height=\"36\"><img id=\"s%d\"src=\"images/%s.gif\"></td>\n", row * 8 + col, piece);
-    }
-
-    fprintf(html, "</tr>\n");
-  }
-}
-
 /* output javascript data for initial position */
 void print_initial_position(FILE* file, const char* FEN, const char* var)
 {
@@ -592,6 +582,7 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
   char *game_filename;
   char game_index[32];
   FILE *html;
+
   char buffer[256];
   char event[256];
   char site[256];
@@ -659,9 +650,6 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
     else {
       if(strstr(buffer, "<black/>")) {
 	fprintf(html, "%s\n", black);
-      }
-      if(strstr(buffer, "<board/>")) {
-	print_board(html, FEN);
       }
       if(strstr(buffer, "<current/>")) {
 	print_initial_position(html, FEN, "board");

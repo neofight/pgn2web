@@ -18,10 +18,136 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+#include <unistd.h>
+#include <stdio.h> 
+#include <stdlib.h>
+#include <string.h>
+
+#include <sys/stat.h>
+
+#include "bool.h"
 #include "pgn2web.h"
+
+/* default installation path */
+#ifndef INSTALL_PATH
+#define INSTALL_PATH "/usr/local/pgn2web/"
+#endif
+
+char usage[] = "usage: pgn2web\n"
+               "       pgn2web [-c yes|no] [-p <pieces>] [-s frameset|linked|individual] pgn-filename html-filename\n";
 
 /* main function */
 int main(int argc, char *argv[])
 {
-  return pgn2web(argv[1], argv[2]);
+  bool valid = true;
+  bool in_options = true;
+  int arg;
+  bool credit_set = false;
+  bool structure_set = false;
+  int pgn_filename = 0;
+  int html_filename = 0;
+  int pieces = 0;
+
+  char *path;
+  struct stat stat_buf;
+
+  /* default options */
+  bool credit = true;
+  structure layout = frameset;
+
+  /* if no arguments provided then launch gui */
+  if(argc == 1) {
+    execvp("p2wgui", 0);
+  }
+
+  /* parse the arguments */
+  arg = 1;
+  while(arg < argc) {
+    
+    /* check for option and process it, else assume filenames */
+    if(in_options && argv[arg][0] == '-') {
+
+      if(!credit_set && !strcmp("-l", argv[arg])) {
+	
+	/* set credit preference here */
+	credit_set = false;
+	arg += 2;
+	continue;
+      }
+
+      if(!pieces && !strcmp("-p", argv[arg])) {
+
+	/* check the piece set is valid */
+	path = (char*)calloc(strlen(INSTALL_PATH) + strlen("/images/") + strlen(argv[arg + 1]) + 1, sizeof(char));
+	strcpy(path, INSTALL_PATH);
+	strcat(path, "/images/");
+	strcat(path, argv[arg + 1]);
+
+	if(!stat(path, &stat_buf)) {
+	  free((void*)path);
+
+	  pieces = arg + 1;
+	  arg += 2;
+	  continue;
+	}
+	else {
+	  free((void*)path);
+	  valid = false;
+	}
+      }
+	
+      if(!structure_set && !strcmp("-s", argv[arg])) {
+
+	/* set structure here */
+	structure_set = true;
+	arg += 2;
+	continue;
+      }
+
+      /* invalid option as there is no match */
+      valid = false;
+      break;
+    } 
+    else {
+
+      /* we no expect filename and not options */
+      in_options = false;
+
+      /* test for an option in the wrong place */
+      if(argv[arg][0] == '-') {
+	valid = false;
+	break;
+      }
+      
+      /* record which argument holds the filename */
+      if(pgn_filename == 0) {
+	pgn_filename = arg;
+      }
+      else if (html_filename == 0) {
+	html_filename = arg;
+      }
+      else {
+	/* we already have both filenames, so there must be an error */
+	valid = false;
+	break;
+      }
+    }
+
+    /* move on to the next argument */
+    arg++;
+  }
+
+  /* make sure that we have both filenames */
+  if(!pgn_filename || !html_filename) {
+    valid = false;
+  }
+
+  /* either execute or print error message */
+  if(valid) {
+    return pgn2web(argv[pgn_filename], argv[html_filename], credit, pieces ? argv[pieces] : "merida", layout);
+  }
+  else {
+    printf(usage);
+    return 1;
+  }
 }

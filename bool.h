@@ -18,17 +18,14 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "bool.h"
+#ifndef BOOL_H
+#define BOOL_H
 
-/* typdefs for discrete parameters */
-typedef enum { frameset, linked, individual } structure;
+#ifndef __cplusplus
 
-#ifdef __cplusplus
-extern "C" {
+/* defines boolean type */
+typedef enum {false, true} bool;
+
 #endif
 
-int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, const char *pieces, structure structure);
-
-#ifdef __cplusplus
-}
 #endif
