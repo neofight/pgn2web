@@ -81,15 +81,6 @@ const MOVEPAIR BCASTLEKINGSIDE = { { 4, 0, 6, 0 },
 const MOVEPAIR BCASTLEQUEENSIDE = { { 4, 0, 2, 0 },
 				    { 0, 0, 3, 0 } };
 
-const PIECE initial_position[8][8] = { { BROOK,   BPAWN, NONE, NONE, NONE, NONE, WPAWN, WROOK },
-				       { BKNIGHT, BPAWN, NONE, NONE, NONE, NONE, WPAWN, WKNIGHT },
-				       { BBISHOP, BPAWN, NONE, NONE, NONE, NONE, WPAWN, WBISHOP },
-				       { BQUEEN,  BPAWN, NONE, NONE, NONE, NONE, WPAWN, WQUEEN },
-				       { BKING,   BPAWN, NONE, NONE, NONE, NONE, WPAWN, WKING },
-				       { BBISHOP, BPAWN, NONE, NONE, NONE, NONE, WPAWN, WBISHOP },
-				       { BKNIGHT, BPAWN, NONE, NONE, NONE, NONE, WPAWN, WKNIGHT },
-				       { BROOK,   BPAWN, NONE, NONE, NONE, NONE, WPAWN, WROOK } };
-
 MOVEVECTOR MOVEVECTORS[5][8] = {
   { {1, 2, 1}, {2, 1, 1},  {2, -1, 1},  {1, -2, 1}, {-1, -2, 1}, {-2, -1, 1}, {-2, 1, 1},  {-1, 2, 1} },
   { {1, 1, 7}, {1, -1, 7}, {-1, -1, 7}, {-1, 1, 7}, {0, 0, 0},   {0, 0, 0},   {0, 0, 0},   {0, 0, 0} },
@@ -99,22 +90,31 @@ MOVEVECTOR MOVEVECTORS[5][8] = {
 };
 
 /* constants */
+const char *initial_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const char *piece_filenames[] = {"sq", "wp", "wn", "wb", "wr", "wq", "wk", "bp", "bn", "bb", "br", "bq", "bk"};
+
+#ifdef DEBUG
+const char *const template_filename = "template.html";
+#else
 const char *const template_filename = INSTALL_PATH "template.html";
+#endif
 
 /* function prototypes */
 void append_move(char* string, const MOVEPAIR movepair);
 MOVEPAIR convert_move(const char* algebraic, const COLOUR turn, const PIECE board[8][8]);
 MOVE extract_coordinates(const char* algebraic);
 void extract_game_list(FILE* file, const char* html_filename, char* game_list);
+void FEN_to_position(const char* FEN, PIECE board[8][8]);
 PIECE get_colour(const PIECE piece);
 MOVEPAIR get_pawn_move(const MOVE move, const COLOUR colour, const PIECE board[8][8]);
 PIECE identify_piece(const COLOUR colour, const char letter);
 BOOL is_legal(const int from_col, const int from_row, const int to_col, const int to_row, const PIECE board[8][8]);
 BOOL is_pinned(const int from_col, const int from_row, int to_col, int to_row, const PIECE board[8][8]);
 void make_move(const MOVEPAIR movepair, PIECE board[8][8]);
-void print_initial_position(FILE* file, const char* var);
+void print_board(FILE* html, const char* FEN);
+void print_initial_position(FILE* file, const char* FEN, const char* var);
 void process_game(FILE *pgn, FILE *template, const char *html_filename, const int game, const char* game_list);
-void process_moves(FILE* pgn, char* moves, char* notation);
+void process_moves(FILE* pgn, const char* FEN, char* moves, char* notation);
 void strip(FILE *pgn);
 
 /* main function */
@@ -379,6 +379,12 @@ void extract_game_list(FILE* file, const char* html_filename, char* game_list)
       printf("(%s) %s - %s %s\n", url, white, black, date);
 #endif
 
+      /* don't display date if it is unknown */
+      if(!strcmp(date, "????.??.??")) {
+	strcpy(date, "");
+      }
+
+      /* generate html for option list */
       strcat(game_list, "<option value=\"");
       strcat(game_list, url);
       strcat(game_list, "\">");
@@ -395,6 +401,48 @@ void extract_game_list(FILE* file, const char* html_filename, char* game_list)
 
       game++;
     }
+  }
+}
+
+/* setup board from FEN position */
+void FEN_to_position(const char* FEN, PIECE board[8][8])
+{
+  const char *position = FEN;
+  char character;
+  int col, row;
+  COLOUR colour;
+
+  /* clear board */
+  for(col = 0; col < 8; col++) {
+    for(row = 0; row < 8; row++) {
+      board[col][row] = NONE;
+    }
+  }
+
+  /* process FEN */
+  col = row = 0;
+
+  while((character = *position) != ' ') {
+    if(character == '/') {
+      col = 0;
+      row++;
+      position++;
+      continue;
+    }
+    
+    if(isdigit(character)) {
+      /* skip specified number of squares */
+      col += character - '0';
+    }
+    else {
+      /* identify piece */
+      colour = isupper(character) ? WHITE : BLACK;
+      character = toupper(character);
+      board[col][row] = identify_piece(colour, character);
+      col++;
+    }
+
+    position++;
   }
 }
 
@@ -674,20 +722,50 @@ void make_move(const MOVEPAIR movepair, PIECE board[8][8])
   }
 }
 
-/* output javascript data for initial position */
-void print_initial_position(FILE* file, const char* var)
+/* print HTML for board */
+void print_board(FILE* html, const char* FEN)
 {
+  PIECE board[8][8];
+  int col, row;
+  char piece[4];
+
+  /* convert FEN to position */
+  FEN_to_position(FEN, board);
+
+  for(row = 0; row < 8; row++) {
+    fprintf(html, "<tr>\n");
+
+    for(col = 0; col < 8; col++) {
+      /* generate piece filename */
+      strcpy(piece, ((col + row) % 2) ? "b" : "w");
+      strcat(piece, piece_filenames[board[col][row]]);
+
+      fprintf(html, "<td width=\"36\" height=\"36\"><img id=\"s%d\"src=\"images/%s.gif\"></td>\n", row * 8 + col, piece);
+    }
+
+    fprintf(html, "</tr>\n");
+  }
+}
+
+/* output javascript data for initial position */
+void print_initial_position(FILE* file, const char* FEN, const char* var)
+{
+  PIECE board[8][8];
   int col, row;
 
+  /* convert FEN to position */
+  FEN_to_position(FEN, board);
+
+  /* print out position */
   fprintf(file, "var %s = new Array(", var);
 
   for(row = 0; row < 8; row++) {
     for(col = 0; col < 8; col++) {
       if(col == 7 && row == 7) {
-	fprintf(file, "%d);\n", initial_position[col][row]);
+	fprintf(file, "%d);\n", board[col][row]);
       }
       else {
-	fprintf(file, "%d,", initial_position[col][row]);
+	fprintf(file, "%d,", board[col][row]);
       }
     }
   }
@@ -708,11 +786,11 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
   char white[256];
   char black[256];
   char result[256];
-  char moves[16384];
-  char notation[16384];
+  char FEN[256];
+  char moves[163840];
+  char notation[163840];
 
-  strcpy(moves, "");
-  strcpy(notation, "");
+  *event = *site = *date = *round = *white = *black = *result = *FEN = *moves = *notation = '\0';
 
   /* open html file */
   if(strlen(html_filename) > 200) {
@@ -746,13 +824,19 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
     sscanf(buffer, "[White \"%[^\"]\"]", white);
     sscanf(buffer, "[Black \"%[^\"]\"]", black);
     sscanf(buffer, "[Result \"%[^\"]\"]", result);
+    sscanf(buffer, "[FEN \"%[^\"]\"]", FEN);
 
     if(!strcmp("\n", buffer)) { break; }
     if(!strcmp("\r\n", buffer)) { break; }
   }
 
+  /* decide on start position */
+  if(*FEN == '\0') {
+    strcpy(FEN, initial_position);
+  }
+
   /* process move text */
-  process_moves(pgn, moves, notation);
+  process_moves(pgn, FEN, moves, notation);
 
   /* process template file, replacing XML-like tags */
   while(fgets(buffer, 256, template) != NULL) {
@@ -764,9 +848,12 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
 	fprintf(html, "%s\n", black);
       }
       if(strstr(buffer, "<board/>")) {
-	print_initial_position(html, "board");
+	print_board(html, FEN);
       }
-      if(strstr(buffer, "<date/>") && strcmp(date, "?")) {
+      if(strstr(buffer, "<current/>")) {
+	print_initial_position(html, FEN, "board");
+      }
+      if(strstr(buffer, "<date/>") && strcmp(date, "????.??.??")) {
 	fprintf(html, "%s\n", date);
       }
       if(strstr(buffer, "<event/>")  && strcmp(event, "?")) {
@@ -776,7 +863,7 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
 	fprintf(html, "%s\n", game_list);
       }
       if(strstr(buffer, "<initial/>")) {
-	print_initial_position(html, "initial");
+	print_initial_position(html, FEN, "initial");
       }
       if(strstr(buffer, "<moves/>")) {
 	fprintf(html, "%s\n", moves);
@@ -804,10 +891,11 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
 }
 
 /* create html & javascript data for moves in pgn file */
-void process_moves(FILE* pgn, char* moves, char* notation)
+void process_moves(FILE* pgn, const char* FEN, char* moves, char* notation)
 {
+  const char *character;
+  COLOUR to_play;
   int moveno = 1;
-  int col, row;
   PIECE board[8][8];
   char move[256];
   MOVEPAIR movepair;
@@ -819,32 +907,40 @@ void process_moves(FILE* pgn, char* moves, char* notation)
 #endif
  
   /* setup board */
-  for(col = 0; col < 8; col++) {
-    for(row = 0; row < 8; row++) {
-      board[col][row] = initial_position[col][row];
-    }
-  }
+  FEN_to_position(FEN, board);
+
+  /* decide on initial position and who is to play */
+  character = FEN;
+  while(*(character++) != ' ') { }
+  to_play = (*character == 'w') ? WHITE : BLACK;
 
   /* process moves */
   sprintf(moves, "var moves = new Array(");
 
   for(;;) {
-    /* process white move */
-    strip(pgn);
 
-    if(fscanf(pgn, "%*d.%s", move) != 1) {
-      fscanf(pgn, "%s", move);
-      break;
+  /* process white move */
+  strip(pgn);
+
+  if(fscanf(pgn, "%*d.%s", move) != 1) {
+    fscanf(pgn, "%s", move);
+    break;
+  }
+    
+  //skip first white move if its black to play
+  if(moveno != 1 || to_play == WHITE) {
+    sprintf(notation + strlen(notation), "<a href=\"javascript:jumpto(%d)\" class=\"move\" id=\"m%d\"=>%d.%s</a> ", moveno * 2 - 1 - (to_play == BLACK), moveno * 2 - 1 - (to_play == BLACK), moveno, move);
+    movepair = convert_move(move, WHITE, board);
+    append_move(moves, movepair);
+    make_move(movepair, board);
+    }
+  else {
+      sprintf(notation + strlen(notation), "%d.%s ", moveno, move);
     }
 
 #ifdef DEBUG
     printf("%d: %d. %s", game, moveno, move);
 #endif
-
-    sprintf(notation + strlen(notation), "<a href=\"javascript:jumpto(%d)\" class=\"move\" id=\"m%d\"=>%d.%s</a> ", moveno * 2 - 1, moveno * 2 - 1, moveno, move);
-    movepair = convert_move(move, WHITE, board);
-    append_move(moves, movepair);
-    make_move(movepair, board);
 
     /* process black move */
     strip(pgn);
@@ -864,7 +960,7 @@ void process_moves(FILE* pgn, char* moves, char* notation)
     printf(" %s\n", move);
 #endif
 
-    sprintf(notation + strlen(notation), "<a href=\"javascript:jumpto(%d)\" class=\"move\" id=\"m%d\">%s</a> ", moveno * 2, moveno * 2, move);
+    sprintf(notation + strlen(notation), "<a href=\"javascript:jumpto(%d)\" class=\"move\" id=\"m%d\">%s</a> ", moveno * 2 - (to_play == BLACK), moveno * 2 - (to_play == BLACK), move);
     movepair = convert_move(move, BLACK, board);
     append_move(moves, movepair);
     make_move(movepair, board);
