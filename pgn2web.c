@@ -33,6 +33,13 @@
 #endif
 #endif
 
+/* define constant for system dependent file seperator */
+#ifdef WINDOWS
+const char SEPERATOR = '\\';
+#else
+const char SEPERATOR = '/';
+#endif
+
 /* type definitions */
 typedef enum { FALSE, TRUE } BOOL;
 
@@ -113,24 +120,16 @@ void strip(FILE *pgn);
 /* main function */
 int main(int argc, char *argv[])
 {
+  char path[1024];
+  char command[1024];
   FILE *pgn, *template;
   char game_list[1048576];
   int game = 0;
   char test;
 
-  /* do copy-images option if present */
-  if(argc == 2 && !strcmp(argv[1], "--copy-images")) {
-#ifdef WINDOWS
-    system("MD images");
-    exit(system("COPY " INSTALL_PATH "images images"));
-#else
-    exit(system("cp -r " INSTALL_PATH "images ."));
-#endif
-  }
-
   /* check validity of arguments */
   if(argc != 3) {
-    printf("Usage: pgn2web pgn-file html-file\n");
+    fprintf(stderr, "Usage: pgn2web pgn-file html-file\n");
     exit(1);
   }
 
@@ -144,6 +143,33 @@ int main(int argc, char *argv[])
     perror("Unable to open template file");
     exit(1);
   }
+
+  /* copy images */
+  if(strrchr(argv[2], SEPERATOR) == NULL) {
+    path[0] = '.';
+    path[1] = SEPERATOR;
+    path[2] = '\0';
+  }
+  else {
+    strncpy(path, argv[2], strrchr(argv[2], SEPERATOR) - argv[2] + 1);
+    path[strrchr(argv[2], SEPERATOR) - argv[2] + 1] = '\0';
+  }
+
+#ifdef WINDOWS
+  strcpy(command, "MD ");
+  strcat(command, path);
+  strcat(command, "images");
+  system(command);
+
+  strcpy(command, "COPY " INSTALL_PATH "images ");
+  strcat(command, path);
+  strcat(command, "images");
+  system(command);
+#else
+  strcpy(command, "cp -r " INSTALL_PATH "images ");
+  strcat(command, path);
+  system(command);
+#endif
 
   /* extract game list */
   extract_game_list(pgn, argv[2], game_list);
@@ -331,7 +357,13 @@ void extract_game_list(FILE* file, const char* html_filename, char* game_list)
 
     if(strcmp(white, "") && strcmp(black, "")) {
       /* generate filename */
-      strcpy(url, html_filename);
+      if(strrchr(html_filename, SEPERATOR) != NULL) {
+	strcpy(url, strrchr(html_filename, SEPERATOR) + 1);
+      }
+      else {
+	strcpy(url, html_filename);
+      }
+
       sprintf(game_index, "%d", game);
 
       if(strrchr(url, '.') == NULL) {
