@@ -24,6 +24,8 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "nag.h"
+
 /* default installation path */
 #ifndef INSTALL_PATH
 #ifdef WINDOWS
@@ -1003,7 +1005,8 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
   char token[256];
   char temp[256];
   char *temp_pointer;
-
+  int nag;
+  
   int col, row;
   MOVEPAIR movepair;
 
@@ -1080,6 +1083,7 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 
       /* Start of a comment? */
       if(token[0] == '{') {
+	strcat(*notation, "\n");
 	strcpy(temp, token + 1);
 	strcpy(token, temp);
 	in_comment = TRUE;
@@ -1095,6 +1099,15 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
       
       /* NAG? (currently ignored) */
       if(token[0] == '$') {
+	sscanf(token + 1, "%d", &nag);
+
+	if(nag < 140) {
+	  if(isalpha(NAGS[nag][0])) {
+	    strcat(*notation, " ");
+	  }
+	  strcat(*notation, NAGS[nag]);
+	}
+
 	temp_pointer = token + 1;
 	while(isdigit(*temp_pointer)) {
 	  temp_pointer++;
@@ -1109,7 +1122,7 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 	strcpy(temp, token + 1);
 	strcpy(token, temp);
 	if(!entered_variation) {
-	  strcat(*notation, " ");
+	  strcat(*notation, "\n");
 	}
 	strcat(*notation, "(");
 
@@ -1195,7 +1208,7 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 
       /* convert move */
       if(!entered_variation) {
-	strcat(*notation, " ");
+	strcat(*notation, "\n");
       }
 
       if(current->to_play == WHITE) {
