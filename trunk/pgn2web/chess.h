@@ -1,5 +1,5 @@
 /*
-  Neophyte - A Winboard compatible chess engine
+  pgn2web - Converts PGN files to interactive web pages
 
   Copyright (C) 2004, 2005 William Hoggarth <email: whoggarth@users.sourceforge.net>
 
@@ -63,11 +63,19 @@ extern int freed;
 
 /* constants */
 #define INITIAL_POSITION "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+extern const MOVE NULL_MOVE;
+extern const MOVE WCASTLEKINGSIDE;
+extern const MOVE WCASTLEQUEENSIDE;
+extern const MOVE BCASTLEKINGSIDE;
+extern const MOVE BCASTLEQUEENSIDE;
+extern const MOVEVECTOR MOVEVECTORS[5][8];
 
 /* function prototypes */
 void add_move_to_list(MOVE_LIST_NODE **move_list, int from_col, int from_row, int to_col, int to_row);
 void add_promotions_to_list(MOVE_LIST_NODE **move_list, int from_col, int from_row, int to_col, int to_row);
+MOVE algebraic_to_move(const char *notation, const POSITION *position);
 PIECE char_to_piece(char character);
+PIECE_TYPE char_to_piece_type(char character);
 void delete_move_list(MOVE_LIST_NODE *move_list);
 MOVE_LIST_NODE* get_legal_moves(const POSITION *position); /* !!! Allocates memory, free list when done with it !!! */
 MOVE_LIST_NODE* get_pseudo_legal_moves(const POSITION *position); /* !!! Allocates memory, free list when done with it !!! */

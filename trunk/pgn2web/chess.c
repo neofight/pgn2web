@@ -1,5 +1,5 @@
 /*
-  neophyte - A Winboard compatible chess engine
+  pgn2web - Converts PGN files to interactive web pages
 
   Copyright (C) 2004, 2005 William Hoggarth <email: whoggarth@users.sourceforge.net>
 
@@ -21,6 +21,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "chess.h"
 
@@ -31,6 +32,16 @@ int freed = 0;
 #endif
 
 /* constants */
+const MOVE NULL_MOVE = { -1, -1, -1, -1, NO_PIECE_TYPE };
+
+const MOVE WCASTLEKINGSIDE = { 4, 0, 6, 0, NO_PIECE_TYPE };
+
+const MOVE WCASTLEQUEENSIDE = { 4, 0, 2, 0, NO_PIECE_TYPE };
+
+const MOVE BCASTLEKINGSIDE = { 4, 7, 6, 7, NO_PIECE_TYPE };
+
+const MOVE BCASTLEQUEENSIDE = { 4, 7, 2, 7, NO_PIECE_TYPE };
+
 const MOVEVECTOR MOVEVECTORS[5][8] = {
   { {1, 2, 1}, {2, 1, 1},  {2, -1, 1},  {1, -2, 1}, {-1, -2, 1}, {-2, -1, 1}, {-2, 1, 1},  {-1, 2, 1} },
   { {1, 1, 7}, {1, -1, 7}, {-1, -1, 7}, {-1, 1, 7}, {0, 0, 0},   {0, 0, 0},   {0, 0, 0},   {0, 0, 0} },
@@ -100,6 +111,106 @@ void add_promotions_to_list(MOVE_LIST_NODE** move_list, int from_col, int from_r
   }
 }
 
+MOVE algebraic_to_move(const char *notation, const POSITION *position)
+{
+  /* this function works by fetching a list of legal moves looking for a match */
+  MOVE_LIST_NODE *move_list;
+  MOVE_LIST_NODE *current_move;
+  PIECE_TYPE piece_type;
+  int pos;
+  MOVE move;
+
+  /* check for castling moves */
+  if(!strncmp("O-O-O", notation, 5)) {
+    move = (position->turn == WHITE) ? WCASTLEQUEENSIDE : BCASTLEQUEENSIDE;
+    return move;
+  }
+
+  if(!strncmp("O-O", notation, 3)) {
+    move = (position->turn == WHITE) ? WCASTLEKINGSIDE : BCASTLEKINGSIDE;
+    return move;
+  }
+
+  /* fetch move list */
+  move_list = get_legal_moves(position);
+  current_move = move_list;
+
+  /* identify the type of piece we're looking for */
+  piece_type = char_to_piece_type(notation[0]);
+
+  /* loop through the move looking for a match */
+  while(current_move) {
+
+    /* match the piece type */
+    if(piece_to_piece_type(position->board[current_move->move.from_col][current_move->move.from_row]) != piece_type) {
+      current_move = current_move->next;
+      continue;
+    }
+
+    /* extract co-ordiates and any promotion piece */
+    move = NULL_MOVE;
+
+    for(pos = strlen(notation) - 1; pos >= 0; pos--) {
+
+      if(piece_type == PAWN && isupper(notation[pos])) {
+	move.promotion_piece = char_to_piece_type(notation[pos]);
+      }
+
+      if(islower(notation[pos]) && notation[pos] != 'x') {
+	if(move.to_col == -1) {
+	  move.to_col = notation[pos] - 'a';
+	}
+	else {
+	  move.from_col = notation[pos] - 'a';
+	}
+      }
+
+      if(isdigit(notation[pos])) {      
+	if(move.to_row == -1) {
+	  move.to_row = notation[pos] - '1';
+	}
+	else {
+	  move.from_row = notation[pos] - '1';
+	}
+      }
+    }
+
+    /* match co-ordinates */
+    if(move.to_col != current_move->move.to_col || move.to_row != current_move->move.to_row) {
+      current_move = current_move->next;
+      continue;
+    }
+
+    if((move.from_col != -1 && move.from_col != current_move->move.from_col) ||
+       (move.from_row != -1 && move.from_row != current_move->move.from_row)) {
+      current_move = current_move->next;
+      continue;
+    }
+
+    /* match promotion piece */
+    if(move.promotion_piece != current_move->move.promotion_piece) {
+      current_move = current_move->next;
+      continue;
+    }
+
+    /* we have a match! */
+    break;
+  }
+
+  /* check if we found a match, if so return it */
+  if(current_move) {
+    move = current_move->move;
+  }
+  else {
+    move.from_col = move.from_row = move.to_col = move.to_row = -1;
+  }
+
+  /* remember to delete the move list */
+  delete_move_list(move_list);
+
+  return move;
+}
+
 PIECE char_to_piece(char character)
 {
   switch(character) {
@@ -129,6 +240,24 @@ PIECE char_to_piece(char character)
     return BKING;
   default:
     return NO_PIECE;
+  }
+}
+
+PIECE_TYPE char_to_piece_type(char character)
+{
+  switch(character) {
+  case 'N':
+    return KNIGHT;
+  case 'B':
+    return BISHOP;
+  case 'R':
+    return ROOK;
+  case 'Q':
+    return QUEEN;
+  case 'K':
+    return KING;
+  default:
+    return PAWN;
   }
 }
 
@@ -797,7 +926,6 @@ PIECE piece_type_and_colour_to_piece(PIECE_TYPE piece_type, COLOUR colour)
 {
   return (colour == WHITE) ? piece_type : piece_type + WKING;
 }
-
 
 void setup_board(POSITION* position, const char* FEN)
 {
