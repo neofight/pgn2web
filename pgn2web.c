@@ -38,8 +38,10 @@
 /* define constant for system dependent file seperator */
 #ifdef WINDOWS
 const char SEPERATOR = '\\';
+#define SEPERATOR_STRING "\\"
 #else
 const char SEPERATOR = '/';
+#define SEPERATOR_STRING "/"
 #endif
 
 /* type definitions */
@@ -114,13 +116,19 @@ const char *initial_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
 const char *piece_filenames[] = {"sq", "wp", "wn", "wb", "wr", "wq", "wk", "bp", "bn", "bb", "br", "bq", "bk"};
 
 #ifdef DEBUG
-const char *const template_filename = "template.html";
+const char *const board_template = "templates" SEPERATOR_STRING "board.html";
+const char *const frame_template = "templates" SEPERATOR_STRING "frame.html";
+const char *const template_filename = "templates" SEPERATOR_STRING "template.html";
 #else
-const char *const template_filename = INSTALL_PATH "template.html";
+const char *const board_template = INSTALL_PATH "templates" SEPERATOR_STRING "board.html";
+const char *const frame_template = INSTALL_PATH "templates" SEPERATOR_STRING "frame.html";
+const char *const template_filename = INSTALL_PATH "templates" SEPERATOR_STRING "template.html";
 #endif
 
 /* function prototypes */
 void append_move(char* string, const MOVEPAIR movepair);
+void create_board(const char* board_filename, const char *html_filename, const char* game_list);
+void create_frame(const char* frame_filename, const char* html_filename); 
 MOVEPAIR convert_move(const char* algebraic, const COLOUR turn, const PIECE board[8][8]);
 void delete_variation(VARIATION *variation, char **moves, long int *moves_size);
 MOVE extract_coordinates(const char* algebraic);
@@ -147,6 +155,8 @@ int main(int argc, char *argv[])
   char *game_list;
   int game = 0;
   char test;
+
+  printf("%s\n", argv[0]);
 
   /* check validity of arguments */
   if(argc != 3) {
@@ -197,10 +207,6 @@ int main(int argc, char *argv[])
   system(command);
 #endif
 
-  /* free allocated memory */
-  free((void*)path);
-  free((void*)command);
-
   /* extract game list */
   extract_game_list(pgn, argv[2], &game_list); /* !! allocates memory to game_list, free after use !! */
   rewind(pgn);
@@ -209,6 +215,10 @@ int main(int argc, char *argv[])
 #ifndef WINDOWS
   umask(0133);
 #endif
+
+  /* create board page & frameset */
+  create_board(board_template, argv[2], game_list);
+  create_frame(frame_template, argv[2]);
 
   /* skip any whitespace (or garbage) */
   while((test = getc(pgn)) != '[' && test != EOF) {
@@ -233,7 +243,9 @@ int main(int argc, char *argv[])
   fclose(pgn);
   fclose(template);
 
-  /* free memory allocated to game_list */
+  /* free allocated memory */
+  free((void*)path);
+  free((void*)command);
   free((void*)game_list);
 
   /* sucess! */
@@ -257,6 +269,128 @@ void append_move(char* string, const MOVEPAIR movepair)
   else {
     sprintf(string + strlen(string), "-1,-1,");
   }
+}
+
+/* creates board child frame from template */
+void create_board(const char* template_filename, const char *html_filename, const char* game_list)
+{
+  char *filename;
+  char buffer[256];
+  FILE *template, *board;
+
+  filename = (char*)calloc(strlen(html_filename) + strlen(".board") + 1, sizeof(char));
+  
+  /* generate filename */
+  strcpy(filename, html_filename);
+
+  if(strrchr(filename, '.') == NULL) {
+    strcat(filename, ".board");
+  }
+  else {
+    (*strrchr(filename, '.')) = '\0';
+    strcat(filename, ".board");
+    strcat(filename, strrchr(html_filename, '.'));
+  }
+
+  /* open template and output file */
+  if((template = fopen(board_template, "r")) == NULL) {
+    perror("Unable to open template file");
+    exit(1);
+  }
+  if((board = fopen(filename, "w")) == NULL) {
+    perror("Unable to create html file");
+    exit(1);
+  }
+
+  /* process template file, replacing XML-like tags */
+  while(fgets(buffer, 256, template) != NULL) {
+    if(strstr(buffer, "<gamelist/>")) {
+      fprintf(board, "%s", game_list);
+    }
+    else {
+      fprintf(board, "%s", buffer);
+    } 
+  }
+
+  /* close files & free memory*/
+  free((void*)filename);
+  fclose(template);
+  fclose(board);
+}
+
+void create_frame(const char *frame_filename, const char *html_filename)
+{
+  char *board_url, *game_url;
+  FILE *template, *frame;
+  char buffer[256];
+  
+  /* allocate memory */
+  board_url = (char*)calloc(strlen(html_filename) + strlen(".board") + 1, sizeof(char));
+  game_url = (char*)calloc(strlen(html_filename) + 32, sizeof(char));
+  
+  /* generate filenames */
+  if(strrchr(html_filename, SEPERATOR) != NULL) {
+    strcpy(game_url, strrchr(html_filename, SEPERATOR) + 1);
+  }
+  else {
+    strcpy(game_url, html_filename);
+  }
+
+  if(strrchr(game_url, '.') == NULL) {
+    strcat(game_url, "0");
+  }
+  else {
+    (*strrchr(game_url, '.')) = '\0';
+    strcat(game_url, "0");
+    strcat(game_url, strrchr(html_filename, '.'));
+  }
+
+  if(strrchr(html_filename, SEPERATOR) != NULL) {
+    strcpy(board_url, strrchr(html_filename, SEPERATOR) + 1);
+  }
+  else {
+    strcpy(board_url, html_filename);
+  }
+
+  if(strrchr(board_url, '.') == NULL) {
+    strcat(board_url, ".board");
+  }
+  else {
+    (*strrchr(board_url, '.')) = '\0';
+    strcat(board_url, ".board");
+    strcat(board_url, strrchr(html_filename, '.'));
+  }
+
+  /* open template and output file */
+  if((template = fopen(frame_filename, "r")) == NULL) {
+    perror("Unable to open template file");
+    exit(1);
+  }
+  if((frame = fopen(html_filename, "w")) == NULL) {
+    perror("Unable to create html file");
+    exit(1);
+  }
+
+  /* process template file, replacing XML-like tags */
+  while(fgets(buffer, 256, template) != NULL) {
+    if(strstr(buffer, "/>") == NULL) {
+      fprintf(frame, "%s", buffer);
+    }
+    else {
+      if(strstr(buffer, "<board/>")) {
+	fprintf(frame, "<frame name=\"board\" src=\"%s\">\n", board_url);
+      }
+      if(strstr(buffer, "<game/>")) {
+	fprintf(frame, "<frame name=\"game\" src=\"%s\">\n", game_url);
+      }
+    }
+  }
+
+  /* close files & free memory*/
+  free((void*)board_url);
+  free((void*)game_url);
+  fclose(template);
+  fclose(frame);
 }
 
 /* converts an algebraic move to a set of co-ordinates */
@@ -1103,7 +1237,7 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 	break;
       }
       
-      /* NAG? (currently ignored) */
+      /* Replace NAGS with comment/symbol */
       if(token[0] == '$') {
 	sscanf(token + 1, "%d", &nag);
 
@@ -1228,12 +1362,12 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation) /*
 	sprintf(*notation + strlen(*notation), "%d.", (current->actual_move + 1) / 2);
       }
       else {
-	if(current->relative_move == 1 || left_variation) {
+	if(current->relative_move == 1 || left_comment || left_variation) {
 	  sprintf(*notation + strlen(*notation), "%d... ", (current->actual_move + 1) / 2);
 	}
       } 
 
-      sprintf(*notation + strlen(*notation), "<a class=\"move\" href=\"javascript:jumpto(%d, %d);\" id=\"v%dm%d\">%s</a>", current->id, current->relative_move, current->id, current->relative_move, move);
+      sprintf(*notation + strlen(*notation), "<a class=\"move\" href=\"javascript:parent.board.jumpto(%d, %d);\" id=\"v%dm%d\">%s</a>", current->id, current->relative_move, current->id, current->relative_move, move);
 
       movepair = convert_move(move, current->to_play, current->board);      
       append_move(current->buffer, movepair);
