@@ -6,9 +6,9 @@
 
 //define constant for system dependent file seperator
 #ifdef WINDOWS
-const char SEPERATOR = '\\';
+const wxChar SEPERATOR = wxT('\\');
 #else
-const char SEPERATOR = '/';
+const wxChar SEPERATOR = wxT('/');
 #endif
 
 class PiecesView : public wxWindow {
@@ -21,7 +21,7 @@ class PiecesView : public wxWindow {
   void setPieceSet(int set);
 
  protected:
-  static const wchar_t* pieceSets[16];
+  static const wxChar* pieceSets[16];
 
   int pieceSet;
   wxBitmap* pieceBitmaps[16][6];
