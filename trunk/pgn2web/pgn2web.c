@@ -306,9 +306,10 @@ void create_board(const char* template_filename, const char *html_filename, cons
 
 
     if(strstr(buffer, "<gamelist/>")) {
-	fprintf(board, "<SELECT name=\"game\" onchange=\"if(this.value != 'null') parent.game.location=this.value;\">\n");
+	fprintf(board, "<select name=\"game\" onchange=\"if(this.value != 'null') parent.game.location=this.value;\">\n");
 	fprintf(board, "<option value=\"null\">Select a game...\n");
-	fprintf(board, "%s\n", game_list);
+	fprintf(board, "%s", game_list);
+	fprintf(board, "</select>\n");
     }
   }
 
@@ -681,14 +682,16 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
       if(strstr(buffer, "<gamelist/>")) {
 	switch(layout) {
 	case FRAMESET:
-	  fprintf(html, "<SELECT name=\"game\" onchange=\"if(this.value != 'null') parent.game.location=this.value;\">\n");
+	  fprintf(html, "<select name=\"game\" onchange=\"if(this.value != 'null') parent.game.location=this.value;\">\n");
 	  fprintf(html, "<option value=\"null\">Select a game...\n");
-	  fprintf(html, "%s\n", game_list);
+	  fprintf(html, "%s", game_list);
+	  fprintf(html, "</select>\n");
 	  break;
 	case LINKED:
-	  fprintf(html, "<SELECT name=\"game\" onchange=\"if(this.value != 'null') location=this.value;\">\n");
+	  fprintf(html, "<select name=\"game\" onchange=\"if(this.value != 'null') location=this.value;\">\n");
           fprintf(html, "<option value=\"null\">Select a game...\n");
-          fprintf(html, "%s\n", game_list);
+          fprintf(html, "%s", game_list);
+	  fprintf(html, "</select>\n");
           break;
 	case INDIVIDUAL:
 	  break;
