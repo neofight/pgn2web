@@ -4,12 +4,12 @@
 
 /*** PiecesView ***/
 
-const wchar_t* PiecesView::pieceSets[16] = { wxT("adventurer"), wxT("alfonso-x"), wxT("cases"),
-					     wxT("condal"), wxT("harlequin"), wxT("kingdom"),
-					     wxT("leipzig"), wxT("line"), wxT("lucena"),
-					     wxT("magnetic"), wxT("mark"), wxT("marroquin"),
-					     wxT("maya"), wxT("mediaeval"), wxT("merida"), 
-					     wxT("motif") };
+const wxChar* PiecesView::pieceSets[16] = { wxT("adventurer"), wxT("alfonso-x"), wxT("cases"),
+					    wxT("condal"), wxT("harlequin"), wxT("kingdom"),
+					    wxT("leipzig"), wxT("line"), wxT("lucena"),
+					    wxT("magnetic"), wxT("mark"), wxT("marroquin"),
+					    wxT("maya"), wxT("mediaeval"), wxT("merida"), 
+					    wxT("motif") };
 
 PiecesView::PiecesView(wxWindow* parent) : wxWindow(parent, -1, wxDefaultPosition,
 						    wxSize(196,36))
