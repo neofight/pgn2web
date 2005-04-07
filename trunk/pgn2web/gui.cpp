@@ -4,10 +4,12 @@
 
 /*** PiecesView ***/
 
-const char* PiecesView::pieceSets[16] = { "adventurer", "alfonso-x", "cases", "condal",
-					  "harlequin", "kingdom", "leipzig", "line", "lucena",
-					  "magnetic", "mark", "marroquin", "maya", "mediaeval",
-					  "merida", "motif"};
+const wchar_t* PiecesView::pieceSets[16] = { wxT("adventurer"), wxT("alfonso-x"), wxT("cases"),
+					     wxT("condal"), wxT("harlequin"), wxT("kingdom"),
+					     wxT("leipzig"), wxT("line"), wxT("lucena"),
+					     wxT("magnetic"), wxT("mark"), wxT("marroquin"),
+					     wxT("maya"), wxT("mediaeval"), wxT("merida"), 
+					     wxT("motif") };
 
 PiecesView::PiecesView(wxWindow* parent) : wxWindow(parent, -1, wxDefaultPosition,
 						    wxSize(196,36))
@@ -19,18 +21,23 @@ PiecesView::PiecesView(wxWindow* parent) : wxWindow(parent, -1, wxDefaultPositio
 
   for(int set = 0; set < 16; set++) {
 
-    pieceBitmaps[set][0] = new wxBitmap(wxString("images/") + pieceSets[set] + "/wpws.png",
-					wxBITMAP_TYPE_PNG);
-    pieceBitmaps[set][1] = new wxBitmap(wxString("images/") + pieceSets[set] + "/wnbs.png",
-					wxBITMAP_TYPE_PNG);
-    pieceBitmaps[set][2] = new wxBitmap(wxString("images/") + pieceSets[set] + "/wbws.png",
-					wxBITMAP_TYPE_PNG);
-    pieceBitmaps[set][3] = new wxBitmap(wxString("images/") + pieceSets[set] + "/wrbs.png",
-					wxBITMAP_TYPE_PNG);
-    pieceBitmaps[set][4] = new wxBitmap(wxString("images/") + pieceSets[set] + "/wqws.png",
-					wxBITMAP_TYPE_PNG);
-    pieceBitmaps[set][5] = new wxBitmap(wxString("images/") + pieceSets[set] + "/wkbs.png",
-					wxBITMAP_TYPE_PNG);
+    pieceBitmaps[set][0] = new wxBitmap(wxString(wxT("images/")) + pieceSets[set] + 
+					wxT("/wpws.png"), wxBITMAP_TYPE_PNG);
+
+    pieceBitmaps[set][1] = new wxBitmap(wxString(wxT("images/")) + pieceSets[set] +
+					wxT("/wnbs.png"), wxBITMAP_TYPE_PNG);
+
+    pieceBitmaps[set][2] = new wxBitmap(wxString(wxT("images/")) + pieceSets[set] +
+					wxT("/wbws.png"),   wxBITMAP_TYPE_PNG);
+
+    pieceBitmaps[set][3] = new wxBitmap(wxString(wxT("images/")) + pieceSets[set] +
+					wxT("/wrbs.png"), wxBITMAP_TYPE_PNG);
+
+    pieceBitmaps[set][4] = new wxBitmap(wxString(wxT("images/")) + pieceSets[set] +
+					wxT("/wqws.png"), wxBITMAP_TYPE_PNG);
+
+    pieceBitmaps[set][5] = new wxBitmap(wxString(wxT("images/")) + pieceSets[set] +
+					wxT("/wkbs.png"), wxBITMAP_TYPE_PNG);
   }
 }
 
@@ -58,7 +65,7 @@ END_EVENT_TABLE()
 p2wFrame::p2wFrame(wxWindow* parent, int id, const wxString& title, const wxPoint& pos,
 		   const wxSize& size, long style)
   : wxFrame(parent, id, title, pos, size,
-	    wxICONIZE|wxCAPTION|wxMINIMIZE|wxMINIMIZE_BOX|wxSYSTEM_MENU)
+	    wxDEFAULT_FRAME_STYLE & ~wxMAXIMIZE_BOX & ~wxRESIZE_BORDER)
 {
   optionsBox = new wxStaticBox(this, -1, wxT("Options"));
   pgnLabel = new wxStaticText(this, -1, wxT("PGN file"), wxDefaultPosition, wxDefaultSize,
@@ -103,8 +110,8 @@ p2wFrame::p2wFrame(wxWindow* parent, int id, const wxString& title, const wxPoin
 
 void p2wFrame::browsePGN(wxCommandEvent& event)
 {
-  wxFileDialog *cDialog = new wxFileDialog(this, "Select a PGN file...", "", "",
-					   "PGN files(*.pgn)|*.pgn|", wxOPEN);
+  wxFileDialog *cDialog = new wxFileDialog(this, wxT("Select a PGN file..."), wxT(""), wxT(""),
+					   wxT("PGN files(*.pgn)|*.pgn|"), wxOPEN);
   if(wxID_OK == cDialog->ShowModal()) {
     pgnText->SetValue(cDialog->GetPath());
   }
@@ -113,8 +120,8 @@ void p2wFrame::browsePGN(wxCommandEvent& event)
  
 void p2wFrame::browseHTML(wxCommandEvent& event)
 {
-  wxFileDialog *cDialog = new wxFileDialog(this, "Name HTML file(s)...", "", "",
-					   "HTML files(*.html)|*.html|", wxSAVE);
+  wxFileDialog *cDialog = new wxFileDialog(this, wxT("Name HTML file(s)..."), wxT(""), wxT(""),
+					   wxT("HTML files(*.html)|*.html|"), wxSAVE);
   if(wxID_OK == cDialog->ShowModal()) {
     htmlText->SetValue(cDialog->GetPath());
   }
@@ -131,18 +138,19 @@ void p2wFrame::convert(wxCommandEvent& event)
   STRUCTURE layout;
 
   //ensure there are filenames entered
-  if(pgnText->GetValue() == "") {
-    wxMessageDialog* cDialog = new wxMessageDialog(this, "Please choose a PGN file to convert",
-						   "pgn2web", wxOK | wxICON_INFORMATION);
+  if(pgnText->GetValue() == wxT("")) {
+    wxMessageDialog* cDialog = new wxMessageDialog(this, 
+						   wxT("Please choose a PGN file to convert"),
+						   wxT("pgn2web"), wxOK | wxICON_INFORMATION);
     cDialog->ShowModal();
     cDialog->Destroy();
     return;
   }
 
-  if(htmlText->GetValue() == "") {
+  if(htmlText->GetValue() == wxT("")) {
     wxMessageDialog* cDialog = new wxMessageDialog(this,
-						   "Please enter a name for the HTML file(s)",
-						   "pgn2web", wxOK | wxICON_INFORMATION);
+						 wxT("Please enter a name for the HTML file(s)"),
+						 wxT("pgn2web"), wxOK | wxICON_INFORMATION);
     cDialog->ShowModal();
     cDialog->Destroy();
     return;
@@ -172,8 +180,8 @@ void p2wFrame::convert(wxCommandEvent& event)
     }
   }
 
-  pgn2web(pgnText->GetValue().c_str(), htmlText->GetValue().c_str(), linkCheckBox->GetValue(),
-	  piecesChoice->GetStringSelection().Lower().c_str(), layout);
+  pgn2web(pgnText->GetValue().mb_str(), htmlText->GetValue().mb_str(), linkCheckBox->GetValue(),
+	  piecesChoice->GetStringSelection().Lower().mb_str(), layout);
 }
 
 void p2wFrame::quit(wxCommandEvent& event)
@@ -248,7 +256,7 @@ IMPLEMENT_APP(p2wApp)
 bool p2wApp::OnInit()
 {
   wxInitAllImageHandlers();
-  p2wFrame* mainFrame = new p2wFrame(0, -1, "");
+  p2wFrame* mainFrame = new p2wFrame(0, -1, wxT(""));
   SetTopWindow(mainFrame);
   mainFrame->Show();
   return true;

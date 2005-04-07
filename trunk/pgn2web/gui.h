@@ -21,7 +21,7 @@ class PiecesView : public wxWindow {
   void setPieceSet(int set);
 
  protected:
-  static const char* pieceSets[16];
+  static const wchar_t* pieceSets[16];
 
   int pieceSet;
   wxBitmap* pieceBitmaps[16][6];
