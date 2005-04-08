@@ -1,7 +1,9 @@
 <html>
 <head>
 <style>
-a.move {color: black; text-decoration: none}
+a.move {color: black; text-decoration: none;}
+html {height: 100%;}
+body {height: 100%; margin: 0px; padding: 0px;}
 </style>
 <script language="javascript" type="text/javascript">
 
@@ -262,101 +264,39 @@ function last()
 </head>
 <body onLoad="reset(); update();">
 
-<table><tr>
+<div style="background-color: ff0000; float: left; height: 100%;">
 
-<td valign="top">
-<table>
-<tr><td align="center" valign="top">
+<div style="padding: 8px; text-align: center;">
+
 <gamelist/>
-</td></tr>
-<tr><td align="center" valign="top" style="padding-top: 16px">
-<table style="border: double; padding: 1" cellpadding="0" cellspacing="0" width="256" height="256">
-<tr>
-<td width="32" height="32"><img id="s0" src="<pieces/>/brws.png"></td>
-<td width="32" height="32"><img id="s1" src="<pieces/>/bnbs.png"></td>
-<td width="32" height="32"><img id="s2" src="<pieces/>/bbws.png"></td>
-<td width="32" height="32"><img id="s3" src="<pieces/>/bqbs.png"></td>
-<td width="32" height="32"><img id="s4" src="<pieces/>/bkws.png"></td>
-<td width="32" height="32"><img id="s5" src="<pieces/>/bbbs.png"></td>
-<td width="32" height="32"><img id="s6" src="<pieces/>/bnws.png"></td>
-<td width="32" height="32"><img id="s7" src="<pieces/>/brbs.png"></td>
-</tr>
-<tr>
-<td width="32" height="32"><img id="s8" src="<pieces/>/bpbs.png"></td>
-<td width="32" height="32"><img id="s9" src="<pieces/>/bpws.png"></td>
-<td width="32" height="32"><img id="s10" src="<pieces/>/bpbs.png"></td>
-<td width="32" height="32"><img id="s11" src="<pieces/>/bpws.png"></td>
-<td width="32" height="32"><img id="s12" src="<pieces/>/bpbs.png"></td>
-<td width="32" height="32"><img id="s13" src="<pieces/>/bpws.png"></td>
-<td width="32" height="32"><img id="s14" src="<pieces/>/bpbs.png"></td>
-<td width="32" height="32"><img id="s15" src="<pieces/>/bpws.png"></td>
-</tr>
-<tr>
-<td width="32" height="32"><img id="s16" src="<pieces/>/ws.png"></td>
-<td width="32" height="32"><img id="s17" src="<pieces/>/bs.png"></td>
-<td width="32" height="32"><img id="s18" src="<pieces/>/ws.png"></td>
-<td width="32" height="32"><img id="s19" src="<pieces/>/bs.png"></td>
-<td width="32" height="32"><img id="s20" src="<pieces/>/ws.png"></td>
-<td width="32" height="32"><img id="s21" src="<pieces/>/bs.png"></td>
-<td width="32" height="32"><img id="s22" src="<pieces/>/ws.png"></td>
-<td width="32" height="32"><img id="s23" src="<pieces/>/bs.png"></td>
-</tr>
-<tr>
-<td width="32" height="32"><img id="s24" src="<pieces/>/bs.png"></td>
-<td width="32" height="32"><img id="s25" src="<pieces/>/ws.png"></td>
-<td width="32" height="32"><img id="s26" src="<pieces/>/bs.png"></td>
-<td width="32" height="32"><img id="s27" src="<pieces/>/ws.png"></td>
-<td width="32" height="32"><img id="s28" src="<pieces/>/bs.png"></td>
-<td width="32" height="32"><img id="s29" src="<pieces/>/ws.png"></td>
-<td width="32" height="32"><img id="s30" src="<pieces/>/bs.png"></td>
-<td width="32" height="32"><img id="s31" src="<pieces/>/ws.png"></td>
-</tr>
-<tr>
-<td width="32" height="32"><img id="s32" src="<pieces/>/ws.png"></td>
-<td width="32" height="32"><img id="s33" src="<pieces/>/bs.png"></td>
-<td width="32" height="32"><img id="s34" src="<pieces/>/ws.png"></td>
-<td width="32" height="32"><img id="s35" src="<pieces/>/bs.png"></td>
-<td width="32" height="32"><img id="s36" src="<pieces/>/ws.png"></td>
-<td width="32" height="32"><img id="s37" src="<pieces/>/bs.png"></td>
-<td width="32" height="32"><img id="s38" src="<pieces/>/ws.png"></td>
-<td width="32" height="32"><img id="s39" src="<pieces/>/bs.png"></td>
-</tr>
-<tr>
-<td width="32" height="32"><img id="s40" src="<pieces/>/bs.png"></td>
-<td width="32" height="32"><img id="s41" src="<pieces/>/ws.png"></td>
-<td width="32" height="32"><img id="s42" src="<pieces/>/bs.png"></td>
-<td width="32" height="32"><img id="s43" src="<pieces/>/ws.png"></td>
-<td width="32" height="32"><img id="s44" src="<pieces/>/bs.png"></td>
-<td width="32" height="32"><img id="s45" src="<pieces/>/ws.png"></td>
-<td width="32" height="32"><img id="s46" src="<pieces/>/bs.png"></td>
-<td width="32" height="32"><img id="s47" src="<pieces/>/ws.png"></td>
-</tr>
-<tr>
-<td width="32" height="32"><img id="s48" src="<pieces/>/wpws.png"></td>
-<td width="32" height="32"><img id="s49" src="<pieces/>/wpbs.png"></td>
-<td width="32" height="32"><img id="s50" src="<pieces/>/wpws.png"></td>
-<td width="32" height="32"><img id="s51" src="<pieces/>/wpbs.png"></td>
-<td width="32" height="32"><img id="s52" src="<pieces/>/wpws.png"></td>
-<td width="32" height="32"><img id="s53" src="<pieces/>/wpbs.png"></td>
-<td width="32" height="32"><img id="s54" src="<pieces/>/wpws.png"></td>
-<td width="32" height="32"><img id="s55" src="<pieces/>/wpbs.png"></td>
-</tr>
-<tr>
-<td width="32" height="32"><img id="s56" src="<pieces/>/wrbs.png"></td>
-<td width="32" height="32"><img id="s57" src="<pieces/>/wnws.png"></td>
-<td width="32" height="32"><img id="s58" src="<pieces/>/wbbs.png"></td>
-<td width="32" height="32"><img id="s59" src="<pieces/>/wqws.png"></td>
-<td width="32" height="32"><img id="s60" src="<pieces/>/wkbs.png"></td>
-<td width="32" height="32"><img id="s61" src="<pieces/>/wbws.png"></td>
-<td width="32" height="32"><img id="s62" src="<pieces/>/wnbs.png"></td>
-<td width="32" height="32"><img id="s63" src="<pieces/>/wrws.png"></td>
-</tr>
-</table>
+
 <p>
-<input type="button" value=" |< " onclick="first()">
-<input type="button" value=" < " onclick="backward()">
-<input type="button" value=" > " onclick="forward()">
-<input type="button" value=" >| " onclick="last()">
+<div style="width: 256px;">
+
+<img id="s0" src="<pieces/>/brws.png"><img id="s1" src="<pieces/>/bnbs.png"><img id="s2" src="<pieces/>/bbws.png"><img id="s3" src="<pieces/>/bqbs.png"><img id="s4" src="<pieces/>/bkws.png"><img id="s5" src="<pieces/>/bbbs.png"><img id="s6" src="<pieces/>/bnws.png"><img id="s7" src="<pieces/>/brbs.png"><br>
+
+<img id="s8" src="<pieces/>/bpbs.png"><img id="s9" src="<pieces/>/bpws.png"><img id="s10" src="<pieces/>/bpbs.png"><img id="s11" src="<pieces/>/bpws.png"><img id="s12" src="<pieces/>/bpbs.png"><img id="s13" src="<pieces/>/bpws.png"><img id="s14" src="<pieces/>/bpbs.png"><img id="s15" src="<pieces/>/bpws.png"><br>
+
+<img id="s16" src="<pieces/>/ws.png"><img id="s17" src="<pieces/>/bs.png"><img id="s18" src="<pieces/>/ws.png"><img id="s19" src="<pieces/>/bs.png"><img id="s20" src="<pieces/>/ws.png"><img id="s21" src="<pieces/>/bs.png"><img id="s22" src="<pieces/>/ws.png"><img id="s23" src="<pieces/>/bs.png"><br>
+
+<img id="s24" src="<pieces/>/bs.png"><img id="s25" src="<pieces/>/ws.png"><img id="s26" src="<pieces/>/bs.png"><img id="s27" src="<pieces/>/ws.png"><img id="s28" src="<pieces/>/bs.png"><img id="s29" src="<pieces/>/ws.png"><img id="s30" src="<pieces/>/bs.png"><img id="s31" src="<pieces/>/ws.png"><br>
+
+<img id="s32" src="<pieces/>/ws.png"><img id="s33" src="<pieces/>/bs.png"><img id="s34" src="<pieces/>/ws.png"><img id="s35" src="<pieces/>/bs.png"><img id="s36" src="<pieces/>/ws.png"><img id="s37" src="<pieces/>/bs.png"><img id="s38" src="<pieces/>/ws.png"><img id="s39" src="<pieces/>/bs.png"><br>
+
+<img id="s40" src="<pieces/>/bs.png"><img id="s41" src="<pieces/>/ws.png"><img id="s42" src="<pieces/>/bs.png"><img id="s43" src="<pieces/>/ws.png"><img id="s44" src="<pieces/>/bs.png"><img id="s45" src="<pieces/>/ws.png"><img id="s46" src="<pieces/>/bs.png"><img id="s47" src="<pieces/>/ws.png"><br>
+
+<img id="s48" src="<pieces/>/wpws.png"><img id="s49" src="<pieces/>/wpbs.png"><img id="s50" src="<pieces/>/wpws.png"><img id="s51" src="<pieces/>/wpbs.png"><img id="s52" src="<pieces/>/wpws.png"><img id="s53" src="<pieces/>/wpbs.png"><img id="s54" src="<pieces/>/wpws.png"><img id="s55" src="<pieces/>/wpbs.png"><br>
+
+<img id="s56" src="<pieces/>/wrbs.png"><img id="s57" src="<pieces/>/wnws.png"><img id="s58" src="<pieces/>/wbbs.png"><img id="s59" src="<pieces/>/wqws.png"><img id="s60" src="<pieces/>/wkbs.png"><img id="s61" src="<pieces/>/wbws.png"><img id="s62" src="<pieces/>/wnbs.png"><img id="s63" src="<pieces/>/wrws.png"><br>
+
+</div>
+
+<p>
+<input type="button" value=" |&lt; " onclick="first()">
+<input type="button" value=" &lt; " onclick="backward()">
+<input type="button" value=" &gt; " onclick="forward()">
+<input type="button" value=" &gt;| " onclick="last()">
+
 <p>Autoplay:
 <select style="vertical-align: middle" name="autoplay" onchange="autoplay(this.value)">
 <option value="-1">Off
@@ -368,16 +308,18 @@ function last()
 </select>
 &nbsp;
 <input style="vertical-align: middle" type="button" value="Flip board" onclick="flip()">
-</td></tr>
-<tr><td align="center">
-<br><small><credit/></small>
-</td><tr>
-</table>
-</td>
 
-<td>&nbsp;</td>
+<p>
+<small><credit/></small>
 
-<td valign="top">
+</div>
+
+</div>
+
+<div style="background-color: blue; float right; height: 100%; overflow: auto;">
+
+<div style="padding: 8px;"> 
+
 <h2>
 <white/>
 -
@@ -389,13 +331,16 @@ function last()
 <event/>
 <site/>
 </h3>
+
 <p>
 <notation/>
 <b>
 <result/>
 </b>
-</td>
 
-</tr></table>
+</div>
+
+</div>
+
 </body>
 </html>
