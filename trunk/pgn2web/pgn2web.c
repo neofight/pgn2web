@@ -87,7 +87,7 @@ void create_board(const char *board_filename, const char *html_filename, const c
 void create_frame(const char* frame_filename, const char* html_filename); 
 void delete_variation(VARIATION *variation, char **moves, long int *moves_size);
 MOVE extract_coordinates(const char* algebraic);
-void extract_game_list(FILE* file, const char* html_filename, char** game_list); /* !! allocates memory which must be freed by caller !! */
+int extract_game_list(FILE* file, const char* html_filename, char** game_list); /* !! allocates memory which must be freed by caller !! */
 void print_board(FILE* html, const char* FEN);
 void print_initial_position(FILE* file, const char* FEN, const char* var);
 void process_game(FILE *pgn, FILE *template, const char *html_filename, const int game, const char *pieces, const char* game_list, bool credit, STRUCTURE layout);
@@ -97,7 +97,8 @@ void strip(FILE *pgn);
 
 /* main function */
 
-int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, const char *pieces, STRUCTURE layout)
+int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, const char *pieces, STRUCTURE layout,
+	    void (*progress)(float percentage, void *context), void *progress_context)
 {
   const char *template_filename;
   char *path;
@@ -105,6 +106,7 @@ int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, co
   FILE *pgn, *template;
   char *game_list;
   int game = 0;
+  int games;
   char test;
 
   /* open files */
@@ -157,7 +159,7 @@ int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, co
 #endif
 
   /* extract game list */
-  extract_game_list(pgn, html_filename, &game_list); /* !! allocates memory to game_list, free after use !! */
+  games = extract_game_list(pgn, html_filename, &game_list); /* !! allocates memory to game_list, free after use !! */
   rewind(pgn);
 
   /* if frameset layout then create board & frameset pages */
@@ -178,6 +180,9 @@ int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, co
     /* process game */
     process_game(pgn, template, html_filename, game, pieces, game_list, credit, layout);
     game++;
+
+    /* call progress callback (for gui progress meters etc) */
+    (*progress)((float)game * 100 / games, progress_context);
 
     /* skip remaining whitespace (and any garbage) */
     while((test = getc(pgn)) != '[' && test != EOF) {
@@ -483,8 +488,8 @@ MOVE extract_coordinates(const char* algebraic)
   return move;
 }
 
-/* constructs game list from STRs */
-void extract_game_list(FILE* file, const char* html_filename, char **game_list) /* !! allocates memory to game_list, it must be freed by the caller !! */
+/* constructs game list from STRs, returns number of games found */
+int extract_game_list(FILE* file, const char* html_filename, char **game_list) /* !! allocates memory to game_list, it must be freed by the caller !! */
 {
   char buffer[256];
   char white[256];
@@ -568,6 +573,8 @@ void extract_game_list(FILE* file, const char* html_filename, char **game_list) 
 
   /* free memory */
   free((void*)url);
+
+  return game;
 }
 
 /* output javascript data for initial position */
