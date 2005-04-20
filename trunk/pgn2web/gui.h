@@ -1,5 +1,6 @@
 #include <wx/wx.h>
-#include <wx/image.h>
+
+#include "pgn2web.h"
 
 //include icon resource
 #include "pgn2web.xpm"
@@ -11,10 +12,17 @@ const wxChar SEPERATOR = wxT('\\');
 const wxChar SEPERATOR = wxT('/');
 #endif
 
+//define event ids
+enum { ID_BROWSEPGN = (wxID_HIGHEST + 1), ID_BROWSEHTML, ID_CHOOSE, ID_CONVERT,
+       ID_UPDATE_PROGRESS };
+
+DECLARE_EVENT_TYPE(wxEVT_UPDATE_PROGRESS, -1) //custom event type for progress updates
+
 class PiecesView : public wxWindow {
 
  public:
   PiecesView(wxWindow* parent);
+  ~PiecesView();
 
   void onPaint(wxPaintEvent& event);
 
@@ -29,6 +37,43 @@ class PiecesView : public wxWindow {
   DECLARE_EVENT_TABLE()
 };
 
+class pgn2webThread : public wxThread {
+
+ public:
+  pgn2webThread(wxEvtHandler *listener, const wxString& PGNFilename,
+		const wxString& HTMLFilename, bool credit, const wxString& pieces,
+		STRUCTURE layout);
+
+  ExitCode Entry();
+
+ protected:
+  // parameters for pgn2web function
+  wxEvtHandler *m_listener;
+  wxString     m_PGNFilename;
+  wxString     m_HTMLFilename;
+  bool         m_credit;
+  wxString     m_pieces;
+  STRUCTURE    m_layout;
+};
+
+class ProgressDialog : public wxDialog {
+
+ public:
+  ProgressDialog(wxWindow* parent);
+
+  void updateProgress(wxCommandEvent& event);
+
+ private:
+  void set_properties();
+  void do_layout();
+  
+ protected:
+  wxStaticText* progressText;
+  wxGauge*      progressGauge;
+  wxButton*     progressOk;
+
+  DECLARE_EVENT_TABLE()
+};
 
 class p2wFrame: public wxFrame {
 
@@ -63,8 +108,6 @@ class p2wFrame: public wxFrame {
   wxRadioButton* individuaRadio;
   wxButton*      convertButton;
   wxButton*      quitButton;
-
-  enum {ID_BROWSEPGN = (wxID_HIGHEST + 1), ID_BROWSEHTML, ID_CHOOSE, ID_CONVERT };
 
   DECLARE_EVENT_TABLE()
 };
