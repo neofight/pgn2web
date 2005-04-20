@@ -176,7 +176,8 @@ int main(int argc, char *argv[])
 
   /* either execute or print error message */
   if(valid) {
-    return pgn2web(argv[pgn_filename], argv[html_filename], credit, pieces ? argv[pieces] : "merida", layout);
+    return pgn2web(argv[pgn_filename], argv[html_filename], credit,
+		   pieces ? argv[pieces] : "merida", layout, NULL, NULL);
   }
   else {
     printf(usage);

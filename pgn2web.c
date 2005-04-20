@@ -182,7 +182,9 @@ int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, co
     game++;
 
     /* call progress callback (for gui progress meters etc) */
-    (*progress)((float)game * 100 / games, progress_context);
+    if(progress) {
+      (*progress)((float)game * 100 / games, progress_context);
+    }
 
     /* skip remaining whitespace (and any garbage) */
     while((test = getc(pgn)) != '[' && test != EOF) {
