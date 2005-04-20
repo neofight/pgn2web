@@ -1,6 +1,18 @@
 #include "gui.h"
 
-#include "pgn2web.h"
+/*** Custom progress event ***/
+
+DEFINE_EVENT_TYPE(wxEVT_UPDATE_PROGRESS)
+
+/*** Progress Callback ***/
+
+void progress_callback(float percentage, void *context)
+{
+  //post event with integer precentage
+  wxCommandEvent progressEvent(wxEVT_UPDATE_PROGRESS, ID_UPDATE_PROGRESS);
+  progressEvent.SetInt((int)percentage);
+  ((wxEvtHandler*)context)->AddPendingEvent(progressEvent);
+} 
 
 /*** PiecesView ***/
 
@@ -41,8 +53,19 @@ PiecesView::PiecesView(wxWindow* parent) : wxWindow(parent, -1, wxDefaultPositio
   }
 }
 
+PiecesView::~PiecesView()
+{
+  //free the images allocated in the constructor
+  for(int set = 0; set < 16; set++) {
+    for(int piece = 0; piece < 5; piece++) {
+      delete pieceBitmaps[set][piece];
+    }
+  }   
+}
+
 void PiecesView::onPaint(wxPaintEvent &event)
 {
+  //draw pieces
   wxPaintDC dc(this);
 
   for(int piece = 0, x= 2; piece < 6; piece++, x += 32) {
@@ -52,6 +75,7 @@ void PiecesView::onPaint(wxPaintEvent &event)
 
 void PiecesView::setPieceSet(int set)
 {
+  //set piece set and redraw
   pieceSet = set;
   Refresh();
 }
@@ -59,6 +83,86 @@ void PiecesView::setPieceSet(int set)
 BEGIN_EVENT_TABLE(PiecesView, wxWindow)
      EVT_PAINT(PiecesView::onPaint)
 END_EVENT_TABLE()
+
+/*** pgn2webThread ***/
+
+pgn2webThread::pgn2webThread(wxEvtHandler *listener, const wxString& PGNFilename,
+			     const wxString& HTMLFilename, bool credit, const wxString& pieces,
+			     STRUCTURE layout) : wxThread()
+{
+  //store parameters for pgn2web function
+  m_listener = listener;
+  m_PGNFilename = PGNFilename;
+  m_HTMLFilename = HTMLFilename;
+  m_credit = credit;
+  m_pieces = pieces;
+  m_layout = layout;
+}
+
+wxThread::ExitCode pgn2webThread::Entry()
+{
+  //simply call pgn2web function with stored parameters
+  pgn2web(m_PGNFilename.mb_str(), m_HTMLFilename.mb_str(), m_credit, m_pieces.mb_str(),
+	  m_layout, progress_callback, m_listener);
+  
+  return NULL;
+}
+
+/*** ProgressDialog ***/
+
+ProgressDialog::ProgressDialog(wxWindow* parent) : wxDialog(parent, wxID_ANY, wxT("pgn2web"),
+							    wxDefaultPosition, wxDefaultSize,
+							    wxDEFAULT_DIALOG_STYLE &
+							    ~wxCLOSE_BOX)
+{
+  progressText = new wxStaticText(this, -1, wxT("Converting PGN to HTML..."), wxDefaultPosition,
+				  wxDefaultSize, wxALIGN_CENTRE | wxST_NO_AUTORESIZE);
+  progressGauge = new wxGauge(this, -1, 100, wxDefaultPosition, wxDefaultSize,
+			      wxGA_HORIZONTAL|wxGA_SMOOTH);
+  progressOk = new wxButton(this, wxID_OK, wxT("OK"));
+
+  set_properties();
+  do_layout();
+}
+
+void ProgressDialog::updateProgress(wxCommandEvent& event)
+{
+  //update progress bar with new percentage
+  int percentage = event.GetInt();
+  progressGauge->SetValue(percentage);
+
+  //if complete, display message and enable ok button
+  if(percentage == 100) {
+    progressText->SetLabel(wxT("Conversion Complete"));
+    progressOk->Enable();
+  }
+}
+
+void ProgressDialog::set_properties()
+{
+  SetTitle(wxT("pgn2web"));
+  progressGauge->SetSize(wxSize(400,28));
+  progressOk->Enable(false);
+}
+
+void ProgressDialog::do_layout()
+{
+  wxBoxSizer* rootSizer = new wxBoxSizer(wxVERTICAL);
+  rootSizer->Add(progressText, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5);
+  rootSizer->Add(progressGauge, 0, wxALL|wxEXPAND|wxFIXED_MINSIZE, 5);
+  rootSizer->Add(progressOk, 0, wxALL|wxALIGN_CENTER_HORIZONTAL|wxFIXED_MINSIZE, 5);
+  SetAutoLayout(true);
+  SetSizer(rootSizer);
+  rootSizer->Fit(this);
+  rootSizer->SetSizeHints(this);
+  Layout();
+  Centre();
+}
+
+BEGIN_EVENT_TABLE(ProgressDialog, wxDialog)
+  EVT_COMMAND(ID_UPDATE_PROGRESS, wxEVT_UPDATE_PROGRESS, ProgressDialog::updateProgress)
+END_EVENT_TABLE()
+
 
 /*** p2wFrame ***/
 
@@ -111,7 +215,8 @@ p2wFrame::p2wFrame(wxWindow* parent, int id, const wxString& title, const wxPoin
 void p2wFrame::browsePGN(wxCommandEvent& event)
 {
   wxFileDialog *cDialog = new wxFileDialog(this, wxT("Select a PGN file..."), wxT(""), wxT(""),
-					   wxT("PGN files(*.pgn)|*.pgn|"), wxOPEN);
+					   wxT("PGN files(*.pgn;*.PGN)|*.pgn;*.PGN|"),
+					   wxOPEN | wxFILE_MUST_EXIST);
   if(wxID_OK == cDialog->ShowModal()) {
     pgnText->SetValue(cDialog->GetPath());
   }
@@ -130,6 +235,7 @@ void p2wFrame::browseHTML(wxCommandEvent& event)
 
 void p2wFrame::choosePieceSet(wxCommandEvent& event)
 {
+  //pass the selected piece set on to the piece view
   piecesView->setPieceSet(event.GetInt());
 }
 
@@ -168,6 +274,7 @@ void p2wFrame::convert(wxCommandEvent& event)
     }
   }
 
+  //get the selected layout
   if(framesetRadio->GetValue()) {
     layout = FRAMESET;
   }
@@ -180,8 +287,19 @@ void p2wFrame::convert(wxCommandEvent& event)
     }
   }
 
-  pgn2web(pgnText->GetValue().mb_str(), htmlText->GetValue().mb_str(), linkCheckBox->GetValue(),
-	  piecesChoice->GetStringSelection().Lower().mb_str(), layout);
+  //create the progress dialog
+  ProgressDialog *dialog = new ProgressDialog(this);
+
+  //run the conversion in a seperate thread
+  pgn2webThread *thread = new pgn2webThread(dialog, pgnText->GetValue(), htmlText->GetValue(),
+					    linkCheckBox->GetValue(),
+					    piecesChoice->GetStringSelection().Lower(), layout);
+  thread->Create();
+  thread->Run();
+
+  //show the dialog
+  dialog->ShowModal();
+  dialog->Destroy();
 }
 
 void p2wFrame::quit(wxCommandEvent& event)
