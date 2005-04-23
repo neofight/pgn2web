@@ -171,16 +171,17 @@ p2wFrame::p2wFrame(wxWindow* parent, int id, const wxString& title, const wxPoin
   : wxFrame(parent, id, title, pos, size,
 	    wxDEFAULT_FRAME_STYLE & ~wxMAXIMIZE_BOX & ~wxRESIZE_BORDER)
 {
-  optionsBox = new wxStaticBox(this, -1, wxT("Options"));
-  pgnLabel = new wxStaticText(this, -1, wxT("PGN file"), wxDefaultPosition, wxDefaultSize,
+  rootPanel = new wxPanel(this, -1);
+  optionsBox = new wxStaticBox(rootPanel, -1, wxT("Options"));
+  pgnLabel = new wxStaticText(rootPanel, -1, wxT("PGN file"), wxDefaultPosition, wxDefaultSize,
 			      wxALIGN_RIGHT);
-  pgnText = new wxTextCtrl(this, -1, wxT(""));
-  pgnButton = new wxButton(this, ID_BROWSEPGN, wxT("Browse..."));
-  htmlLabel = new wxStaticText(this, -1, wxT("HTML file(s)"));
-  htmlText = new wxTextCtrl(this, -1, wxT(""));
-  htmlButton = new wxButton(this, ID_BROWSEHTML, wxT("Browse..."));
-  linkCheckBox = new wxCheckBox(this, -1, wxT("Include link to pgn2web homepage"));
-  piecesView = new PiecesView(this);
+  pgnText = new wxTextCtrl(rootPanel, -1, wxT(""));
+  pgnButton = new wxButton(rootPanel, ID_BROWSEPGN, wxT("Browse..."));
+  htmlLabel = new wxStaticText(rootPanel, -1, wxT("HTML file(s)"));
+  htmlText = new wxTextCtrl(rootPanel, -1, wxT(""));
+  htmlButton = new wxButton(rootPanel, ID_BROWSEHTML, wxT("Browse..."));
+  linkCheckBox = new wxCheckBox(rootPanel, -1, wxT("Include link to pgn2web homepage"));
+  piecesView = new PiecesView(rootPanel);
   const wxString piecesChoice_choices[] = {
     wxT("Adventurer"),
     wxT("Alfonso-X"),
@@ -199,14 +200,15 @@ p2wFrame::p2wFrame(wxWindow* parent, int id, const wxString& title, const wxPoin
     wxT("Merida"),
     wxT("Motif")
   };
-  piecesChoice = new wxChoice(this, ID_CHOOSE, wxDefaultPosition, wxDefaultSize, 16,
+  piecesChoice = new wxChoice(rootPanel, ID_CHOOSE, wxDefaultPosition, wxDefaultSize, 16,
 			      piecesChoice_choices, 0);
-  layoutLabel = new wxStaticText(this, -1, wxT("Layout:"));
-  framesetRadio = new wxRadioButton(this, -1, wxT("Frameset"));
-  linkedRadio = new wxRadioButton(this, -1, wxT("Linked"));
-  individuaRadio = new wxRadioButton(this, -1, wxT("Individual"));
-  convertButton = new wxButton(this, ID_CONVERT, wxT("Convert"));
-  quitButton = new wxButton(this, wxID_EXIT, wxT("Quit"));
+  layoutLabel = new wxStaticText(rootPanel, -1, wxT("Layout:"));
+  framesetRadio = new wxRadioButton(rootPanel, -1, wxT("Frameset"), wxDefaultPosition,
+				    wxDefaultSize, wxRB_GROUP);
+  linkedRadio = new wxRadioButton(rootPanel, -1, wxT("Linked"));
+  individuaRadio = new wxRadioButton(rootPanel, -1, wxT("Individual"));
+  convertButton = new wxButton(rootPanel, ID_CONVERT, wxT("Convert"));
+  quitButton = new wxButton(rootPanel, wxID_EXIT, wxT("Quit"));
 
   set_properties();
   do_layout();
@@ -215,7 +217,7 @@ p2wFrame::p2wFrame(wxWindow* parent, int id, const wxString& title, const wxPoin
 void p2wFrame::browsePGN(wxCommandEvent& event)
 {
   wxFileDialog *cDialog = new wxFileDialog(this, wxT("Select a PGN file..."), wxT(""), wxT(""),
-					   wxT("PGN files(*.pgn;*.PGN)|*.pgn;*.PGN|"),
+					   wxT("PGN files(*.pgn;*.PGN)|*.pgn;*.PGN"),
 					   wxOPEN | wxFILE_MUST_EXIST);
   if(wxID_OK == cDialog->ShowModal()) {
     pgnText->SetValue(cDialog->GetPath());
@@ -226,7 +228,7 @@ void p2wFrame::browsePGN(wxCommandEvent& event)
 void p2wFrame::browseHTML(wxCommandEvent& event)
 {
   wxFileDialog *cDialog = new wxFileDialog(this, wxT("Name HTML file(s)..."), wxT(""), wxT(""),
-					   wxT("HTML files(*.html)|*.html|"), wxSAVE);
+					   wxT("HTML files(*.html)|*.html"), wxSAVE);
   if(wxID_OK == cDialog->ShowModal()) {
     htmlText->SetValue(cDialog->GetPath());
   }
@@ -318,6 +320,7 @@ void p2wFrame::set_properties()
 
 void p2wFrame::do_layout()
 {
+  wxBoxSizer* panelSizer = new wxBoxSizer(wxVERTICAL);
   wxBoxSizer* rootSizer = new wxBoxSizer(wxVERTICAL);
   wxBoxSizer* buttonsSizer = new wxBoxSizer(wxHORIZONTAL);
   wxStaticBoxSizer* optionsSizer = new wxStaticBoxSizer(optionsBox, wxVERTICAL);
@@ -332,24 +335,27 @@ void p2wFrame::do_layout()
   filesSizer->Add(htmlButton, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
   filesSizer->AddGrowableCol(1);
   rootSizer->Add(filesSizer, 0, wxLEFT|wxRIGHT|wxTOP|wxEXPAND, 5);
-  optionsSizer->Add(linkCheckBox, 0, wxALIGN_CENTER_HORIZONTAL, 0);
+  optionsSizer->Add(linkCheckBox, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5);
   piecesSizer->Add(piecesView, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
   piecesSizer->Add(piecesChoice, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
-  optionsSizer->Add(piecesSizer, 1, wxEXPAND, 0);
+  optionsSizer->Add(piecesSizer, 0, wxALIGN_CENTER_HORIZONTAL, 0);
   layoutSizer->Add(layoutLabel, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
   layoutSizer->Add(framesetRadio, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
   layoutSizer->Add(linkedRadio, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
   layoutSizer->Add(individuaRadio, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5);
-  optionsSizer->Add(layoutSizer, 1, wxALIGN_CENTER_HORIZONTAL, 0);
+  optionsSizer->Add(layoutSizer, 0, wxALIGN_CENTER_HORIZONTAL, 0);
   rootSizer->Add(optionsSizer, 1, wxALL|wxEXPAND, 10);
   buttonsSizer->Add(convertButton, 0, wxALL, 5);
   buttonsSizer->Add(quitButton, 0, wxALL, 5);
   rootSizer->Add(buttonsSizer, 0,
 		 wxLEFT|wxRIGHT|wxBOTTOM|wxALIGN_CENTER_HORIZONTAL|wxADJUST_MINSIZE, 5);
+  rootPanel->SetAutoLayout(true);
+  rootPanel->SetSizer(rootSizer);
+  panelSizer->Add(rootPanel, 1, wxEXPAND, 0);
   SetAutoLayout(true);
-  SetSizer(rootSizer);
-  rootSizer->Fit(this);
-  rootSizer->SetSizeHints(this);
+  SetSizer(panelSizer);
+  panelSizer->Fit(this);
+  panelSizer->SetSizeHints(this);
   Layout();
   Centre();
 }

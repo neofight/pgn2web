@@ -1,4 +1,5 @@
 #include <wx/wx.h>
+#include <wx/image.h>
 
 #include "pgn2web.h"
 
@@ -92,6 +93,7 @@ class p2wFrame: public wxFrame {
   void do_layout();
   
  protected:
+  wxPanel*       rootPanel;
   wxStaticBox*   optionsBox;
   wxStaticText*  pgnLabel;
   wxTextCtrl*    pgnText;
