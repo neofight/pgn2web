@@ -29,15 +29,6 @@
 #include "chess.h"
 #include "nag.h"
 
-/* default installation path */
-#ifndef INSTALL_PATH
-#ifdef WINDOWS
-#define INSTALL_PATH "C:\\Progra~1\\pgn2web\\"
-#else
-#define INSTALL_PATH "/usr/local/pgn2web/"
-#endif
-#endif
-
 /* define constant for system dependent file seperator */
 #ifdef WINDOWS
 const char SEPERATOR = '\\';
@@ -68,18 +59,10 @@ typedef struct variation {
 const char *piece_filenames[] = {"", "wp", "wn", "wb", "wr", "wq", "wk", "bp", "bn", "bb", "br", "bq", "bk"};
 const char *credit_html = "This page was created with <a href=\"http://pgn2web.sourceforge.net\" target=\"_top\">pgn2web</a>.";
 
-#ifdef DEBUG
 const char *board_template = "templates" SEPERATOR_STRING "board.html";
 const char *frame_template = "templates" SEPERATOR_STRING "frame.html";
-const char *template_filename = "templates" SEPERATOR_STRING "game.html";
-const char *single_filename = "templates" SEPERATOR_STRING "single.html";
-
-#else
-const char *board_template = INSTALL_PATH "templates" SEPERATOR_STRING "board.html";
-const char *frame_template = INSTALL_PATH "templates" SEPERATOR_STRING "frame.html";
-const char *game_filename = INSTALL_PATH "templates" SEPERATOR_STRING "game.html";
-const char *single_filename = INSTALL_PATH "templates" SEPERATOR_STRING "single.html";
-#endif
+const char *game_template = "templates" SEPERATOR_STRING "game.html";
+const char *single_template = "templates" SEPERATOR_STRING "single.html";
 
 /* function prototypes */
 void append_move(char *string, const MOVE *move, const POSITION *position);
@@ -88,28 +71,53 @@ void create_frame(const char* frame_filename, const char* html_filename);
 void delete_variation(VARIATION *variation, char **moves, long int *moves_size);
 MOVE extract_coordinates(const char* algebraic);
 int extract_game_list(FILE* file, const char* html_filename, char** game_list); /* !! allocates memory which must be freed by caller !! */
+void filecat(char *filename, const char *suffix);
+void pathcat(char *root_path, const char *path);
 void print_board(FILE* html, const char* FEN);
 void print_initial_position(FILE* file, const char* FEN, const char* var);
 void process_game(FILE *pgn, FILE *template, const char *html_filename, const int game, const char *pieces, const char* game_list, bool credit, STRUCTURE layout);
 void process_moves(FILE* pgn, const char* FEN, char **moves, char **notation, STRUCTURE layout); /* !! allocates memory which must be freed by caller !! */
 void strip(FILE *pgn);
-
+void truncate_to_path(char *filename);
+void truncate_to_filename(char *filename);
 
 /* main function */
 
-int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, const char *pieces, STRUCTURE layout,
+int pgn2web(const char* resource_path, const char *pgn_filename, const char *html_filename,
+	    bool credit, const char *pieces, STRUCTURE layout,
 	    void (*progress)(float percentage, void *context), void *progress_context)
 {
-  const char *template_filename;
-  char *path;
-  char *command;
+  char *board_filename, *frame_filename, *game_filename, *single_filename;
+  char *template_filename;
+  char *command, *src, *dest;
   FILE *pgn, *template;
   char *game_list;
   int game = 0;
   int games;
   char test;
 
-  /* open files */
+  /* create full paths for template files */
+  board_filename = (char*)calloc(strlen(resource_path) + strlen(board_template) + 2,
+				 sizeof(char));
+  strcpy(board_filename, resource_path);
+  pathcat(board_filename, board_template);
+
+  frame_filename = (char*)calloc(strlen(resource_path) + strlen(frame_template) + 2,
+				 sizeof(char));
+  strcpy(frame_filename, resource_path);
+  pathcat(frame_filename, frame_template);
+
+  game_filename = (char*)calloc(strlen(resource_path) + strlen(game_template) + 2,
+				 sizeof(char));
+  strcpy(game_filename, resource_path);
+  pathcat(game_filename, game_template);
+
+  single_filename = (char*)calloc(strlen(resource_path) + strlen(single_template) + 2,
+				 sizeof(char));
+  strcpy(single_filename, resource_path);
+  pathcat(single_filename, single_template);
+
+  /* open pgn file */
   if((pgn = fopen(pgn_filename, "r")) == NULL) {
     exit(1);
   }
@@ -122,41 +130,48 @@ int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, co
     exit(1);
   }
 
-  /* allocate required space for path and command strings */
-  path = (char*)calloc(strlen(html_filename) + 32, sizeof(char));
-  command = (char*)calloc(strlen(html_filename) + strlen(INSTALL_PATH) + 32, sizeof(char));
+  /** copy images **/
+  
+  /* create source and destination paths for the copy */
 
-  /* copy images */
-  if(strrchr(html_filename, SEPERATOR) == NULL) {
-    path[0] = '.';
-    path[1] = SEPERATOR;
-    path[2] = '\0';
-  }
-  else {
-    strncpy(path, html_filename, strrchr(html_filename, SEPERATOR) - html_filename + 1);
-    path[strrchr(html_filename, SEPERATOR) - html_filename + 1] = '\0';
-  }
+  src = (char*)calloc(strlen(resource_path) + strlen("images") + strlen(pieces) + 3,
+			 sizeof(char));
+  strcpy(src, resource_path);
+  pathcat(src, "images");
+  pathcat(src, pieces);
+
+  dest = (char*)calloc(strlen(html_filename), sizeof(char));
+  strcpy(dest, html_filename);
+  truncate_to_path(dest);
+
+  /* allocate required space for command string */
+
+  command = (char*)calloc(strlen(src) + strlen(dest) + 32, sizeof(char));
 
 #ifdef WINDOWS
   strcpy(command, "MD \"");
-  strcat(command, path);
-  strcat(command, "images\"");
+  strcat(command, dest);
+  strcat(command, "\"");
   system(command);
 
-  strcpy(command, "COPY \"" INSTALL_PATH "images" SEPERATOR_STRING);
-  strcat(command, pieces);
+  strcpy(command, "COPY \"");
+  strcat(command, src);
   strcat(command, "\" \"");
-  strcat(command, path);
-  strcat(command, "images\"");
+  strcat(command, dest);
+  strcat(command, "\"");
   system(command);
 #else
-  strcpy(command, "cp -r \"" INSTALL_PATH "images" SEPERATOR_STRING);
-  strcat(command, pieces);
+  strcpy(command, "cp -r \"");
+  strcat(command, src);
   strcat(command, "\" \"");
-  strcat(command, path);
+  strcat(command, dest);
   strcat(command, "\"");
   system(command);
 #endif
+
+  free((void*)src);
+  free((void*)dest);
+  free((void*)command);
 
   /* extract game list */
   games = extract_game_list(pgn, html_filename, &game_list); /* !! allocates memory to game_list, free after use !! */
@@ -164,8 +179,8 @@ int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, co
 
   /* if frameset layout then create board & frameset pages */
   if(layout == FRAMESET) {
-    create_board(board_template, html_filename, pieces, game_list, credit);
-    create_frame(frame_template, html_filename);
+    create_board(board_filename, html_filename, pieces, game_list, credit);
+    create_frame(frame_filename, html_filename);
   }
 
   /* skip any whitespace (or garbage) */
@@ -197,8 +212,10 @@ int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, co
   fclose(template);
 
   /* free allocated memory */
-  free((void*)path);
-  free((void*)command);
+  free((void*)board_filename);
+  free((void*)frame_filename);
+  free((void*)game_filename);
+  free((void*)single_filename);
   free((void*)game_list);
 
   /* sucess! */
@@ -258,34 +275,27 @@ void append_move(char *string, const MOVE *move, const POSITION *position)
 /* creates board child frame from template */
 void create_board(const char* template_filename, const char *html_filename, const char* pieces, const char* game_list, bool credit)
 {
-  char *filename;
+  char *board_filename;
   char buffer[256];
   char *tag;
   FILE *template, *board;
 
-  filename = (char*)calloc(strlen(html_filename) + strlen(".board") + 1, sizeof(char));
-  
-  /* generate filename */
-  strcpy(filename, html_filename);
-
-  if(strrchr(filename, '.') == NULL) {
-    strcat(filename, ".board");
-  }
-  else {
-    (*strrchr(filename, '.')) = '\0';
-    strcat(filename, ".board");
-    strcat(filename, strrchr(html_filename, '.'));
-  }
+  /* generate board filename */
+  board_filename = (char*)calloc(strlen(html_filename) + strlen(".board") + 1, sizeof(char));
+  strcpy(board_filename, html_filename);
+  filecat(board_filename, ".board");
 
   /* open template and output file */
-  if((template = fopen(board_template, "r")) == NULL) {
+  if((template = fopen(template_filename, "r")) == NULL) {
     perror("Unable to open template file");
     exit(1);
   }
-  if((board = fopen(filename, "w")) == NULL) {
+  if((board = fopen(board_filename, "w")) == NULL) {
     perror("Unable to create html file");
     exit(1);
   }
+
+  free((void*)board_filename);
 
   /* process template file, replacing XML-like tags */
   while(fgets(buffer, 256, template) != NULL) {
@@ -320,8 +330,7 @@ void create_board(const char* template_filename, const char *html_filename, cons
     }
   }
 
-  /* close files & free memory*/
-  free((void*)filename);
+  /* close files */
   fclose(template);
   fclose(board);
 }
@@ -334,40 +343,16 @@ void create_frame(const char *frame_filename, const char *html_filename)
   
   /* allocate memory */
   board_url = (char*)calloc(strlen(html_filename) + strlen(".board") + 1, sizeof(char));
-  game_url = (char*)calloc(strlen(html_filename) + 32, sizeof(char));
+  game_url = (char*)calloc(strlen(html_filename) + 2, sizeof(char));
   
   /* generate filenames */
-  if(strrchr(html_filename, SEPERATOR) != NULL) {
-    strcpy(game_url, strrchr(html_filename, SEPERATOR) + 1);
-  }
-  else {
-    strcpy(game_url, html_filename);
-  }
+  strcpy(board_url, html_filename);
+  truncate_to_filename(board_url);
+  filecat(board_url, ".board");
 
-  if(strrchr(game_url, '.') == NULL) {
-    strcat(game_url, "0");
-  }
-  else {
-    (*strrchr(game_url, '.')) = '\0';
-    strcat(game_url, "0");
-    strcat(game_url, strrchr(html_filename, '.'));
-  }
-
-  if(strrchr(html_filename, SEPERATOR) != NULL) {
-    strcpy(board_url, strrchr(html_filename, SEPERATOR) + 1);
-  }
-  else {
-    strcpy(board_url, html_filename);
-  }
-
-  if(strrchr(board_url, '.') == NULL) {
-    strcat(board_url, ".board");
-  }
-  else {
-    (*strrchr(board_url, '.')) = '\0';
-    strcat(board_url, ".board");
-    strcat(board_url, strrchr(html_filename, '.'));
-  }
+  strcpy(game_url, html_filename);
+  truncate_to_filename(game_url);
+  filecat(game_url, "0");
 
   /* open template and output file */
   if((template = fopen(frame_filename, "r")) == NULL) {
@@ -520,24 +505,12 @@ int extract_game_list(FILE* file, const char* html_filename, char **game_list) /
     sscanf(buffer, "[Black \"%[^\"]\"]", black);
 
     if(strcmp(white, "") && strcmp(black, "")) {
-      /* generate filename */
-      if(strrchr(html_filename, SEPERATOR) != NULL) {
-	strcpy(url, strrchr(html_filename, SEPERATOR) + 1);
-      }
-      else {
-	strcpy(url, html_filename);
-      }
 
+      /* generate game url */
+      strcpy(url, html_filename);
+      truncate_to_filename(url);
       sprintf(game_index, "%d", game);
-
-      if(strrchr(url, '.') == NULL) {
-	strcat(url, game_index);
-      }
-      else {
-	(*strrchr(url, '.')) = '\0';
-	strcat(url, game_index);
-	strcat(url, strrchr(html_filename, '.'));
-      }
+      filecat(url, game_index);
 
 #ifdef DEBUG
       printf("(%s) %s - %s %s\n", url, white, black, date);
@@ -577,6 +550,48 @@ int extract_game_list(FILE* file, const char* html_filename, char **game_list) /
   free((void*)url);
 
   return game;
+}
+
+/* adds a suffix to a filename (but before the extension) */
+void filecat(char *filename, const char *suffix)
+{
+  char *insert_point;
+  char *extension;
+
+  /* locate filename extension, and make a copy */
+  insert_point = strrchr(filename, '.');
+  if(insert_point) {
+    extension = (char*)calloc(strlen(insert_point), sizeof(char));
+    strcpy(extension, insert_point);
+  }
+  else {
+    /* if there is no extension we can simply concatenate and return */
+    strcat(filename, suffix);
+    return;
+  }
+
+  /* add suffix and append extension*/
+  strcpy(insert_point, suffix);
+  strcat(filename, extension);
+
+  free((void*)extension);
+}
+
+/* concatinates two paths */
+void pathcat(char *root_path, const char *path)
+{
+  /* simply concatenate, making sure there is one seperator between the two components */
+  
+  if(root_path[strlen(root_path) - 1] != SEPERATOR) {
+    strcat(root_path, SEPERATOR_STRING);
+  }
+
+  if(path[0] == SEPERATOR) {
+    strcat(root_path, path + 1);
+  }
+  else {
+    strcat(root_path, path);
+  }
 }
 
 /* output javascript data for initial position */
@@ -632,15 +647,7 @@ void process_game(FILE *pgn, FILE *template, const char *html_filename, int game
   /* open html file */
   strcpy(game_filename, html_filename);
   sprintf(game_index, "%d", game);
-
-  if(strrchr(game_filename, '.') == NULL) {
-    strcat(game_filename, game_index);
-  }
-  else {
-    (*strrchr(game_filename, '.')) = '\0';
-    strcat(game_filename, game_index);
-    strcat(game_filename, strrchr(html_filename, '.'));
-  }
+  filecat(game_filename, game_index);
   
   if((html = fopen(game_filename, "w")) == NULL) {
     perror("Unable to create html file");
@@ -1073,4 +1080,36 @@ void strip(FILE *pgn)
       }
     }
   }
+}
+
+/* removes the filename just leaving the path component */
+void truncate_to_path(char *filename)
+{
+  char *path_end;
+
+  if((path_end = strrchr(filename, SEPERATOR))) {
+    *(path_end + 1) = '\0';
+  }
+  else {
+    strcpy(filename, ".");
+    strcat(filename, SEPERATOR_STRING);
+  }
+}
+
+/* removes the path just leaving the filename component */
+void truncate_to_filename(char *filename)
+{
+  char *path_end;
+  char *copy;
+
+  /* search for end of the path component, if not found return leaving the filename untouched */
+  if(!(path_end = strrchr(filename, SEPERATOR))) {
+    return;
+  }
+    
+  /* make copy of filename component before copying it over the original */
+  copy = (char*)calloc(strlen(path_end + 1) + 1, sizeof(char));
+  strcpy(copy, path_end + 1);
+  strcpy(filename, copy);
+  free((void*)copy);
 }

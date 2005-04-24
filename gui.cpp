@@ -102,8 +102,8 @@ pgn2webThread::pgn2webThread(wxEvtHandler *listener, const wxString& PGNFilename
 wxThread::ExitCode pgn2webThread::Entry()
 {
   //simply call pgn2web function with stored parameters
-  pgn2web(m_PGNFilename.mb_str(), m_HTMLFilename.mb_str(), m_credit, m_pieces.mb_str(),
-	  m_layout, progress_callback, m_listener);
+  pgn2web("/usr/local/pgn2web/", m_PGNFilename.mb_str(), m_HTMLFilename.mb_str(), m_credit,
+	  m_pieces.mb_str(), m_layout, progress_callback, m_listener);
   
   return NULL;
 }
