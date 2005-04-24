@@ -27,7 +27,8 @@ typedef enum { FRAMESET, LINKED, INDIVIDUAL } STRUCTURE;
 extern "C" {
 #endif
 
-int pgn2web(const char *pgn_filename, const char *html_filename, bool credit, const char *pieces, STRUCTURE layout,
+int pgn2web(const char *resource_path, const char *pgn_filename, const char *html_filename,
+	    bool credit, const char *pieces, STRUCTURE layout,
 	    void (*progress)(float percentage, void *context), void *progress_context);
 
 #ifdef __cplusplus
