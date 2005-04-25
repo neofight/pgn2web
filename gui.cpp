@@ -23,33 +23,50 @@ const wxChar* PiecesView::pieceSets[16] = { wxT("adventurer"), wxT("alfonso-x"),
 					    wxT("maya"), wxT("mediaeval"), wxT("merida"), 
 					    wxT("motif") };
 
-PiecesView::PiecesView(wxWindow* parent) : wxWindow(parent, -1, wxDefaultPosition,
-						    wxSize(196,36))
+PiecesView::PiecesView(wxWindow* parent, const wxString& resourcePath)
+  : wxWindow(parent, -1, wxDefaultPosition, wxSize(196,36))
 {
+  //Set background colour
   SetBackgroundColour(wxColour(wxT("black")));
+
+  //Derive path for images
+  wxFileName imagePath(resourcePath);
+  imagePath.AppendDir(wxT("images"));
+  wxFileName setPath;
+  wxFileName fileName;
 
   //Load pieces bitmaps
   pieceSet = 14;
 
   for(int set = 0; set < 16; set++) {
 
-    pieceBitmaps[set][0] = new wxBitmap(wxString(wxT("images/")) + pieceSets[set] + 
-					wxT("/wpws.png"), wxBITMAP_TYPE_PNG);
+    setPath = imagePath;
+    setPath.AppendDir(pieceSets[set]);
 
-    pieceBitmaps[set][1] = new wxBitmap(wxString(wxT("images/")) + pieceSets[set] +
-					wxT("/wnbs.png"), wxBITMAP_TYPE_PNG);
+    fileName = setPath;
+    fileName.SetName(wxT("wpws.png"));
+    pieceBitmaps[set][0] = new wxBitmap(fileName.GetFullPath(), wxBITMAP_TYPE_PNG);
 
-    pieceBitmaps[set][2] = new wxBitmap(wxString(wxT("images/")) + pieceSets[set] +
-					wxT("/wbws.png"),   wxBITMAP_TYPE_PNG);
+    fileName = setPath;
+    fileName.SetName(wxT("wnbs.png"));
+    pieceBitmaps[set][1] = new wxBitmap(fileName.GetFullPath(), wxBITMAP_TYPE_PNG);
 
-    pieceBitmaps[set][3] = new wxBitmap(wxString(wxT("images/")) + pieceSets[set] +
-					wxT("/wrbs.png"), wxBITMAP_TYPE_PNG);
+    fileName = setPath;
+    fileName.SetName(wxT("wbws.png"));
+    pieceBitmaps[set][2] = new wxBitmap(fileName.GetFullPath(), wxBITMAP_TYPE_PNG);
+    
+    fileName = setPath;
+    fileName.SetName(wxT("wrbs.png"));
+    pieceBitmaps[set][3] = new wxBitmap(fileName.GetFullPath(), wxBITMAP_TYPE_PNG);
 
-    pieceBitmaps[set][4] = new wxBitmap(wxString(wxT("images/")) + pieceSets[set] +
-					wxT("/wqws.png"), wxBITMAP_TYPE_PNG);
+    fileName = setPath;
+    fileName.SetName(wxT("wqws.png"));
+    pieceBitmaps[set][4] = new wxBitmap(fileName.GetFullPath(), wxBITMAP_TYPE_PNG);
+    
+    fileName = setPath;
+    fileName.SetName(wxT("wkbs.png"));
+    pieceBitmaps[set][5] = new wxBitmap(fileName.GetFullPath(), wxBITMAP_TYPE_PNG);
 
-    pieceBitmaps[set][5] = new wxBitmap(wxString(wxT("images/")) + pieceSets[set] +
-					wxT("/wkbs.png"), wxBITMAP_TYPE_PNG);
   }
 }
 
@@ -57,7 +74,7 @@ PiecesView::~PiecesView()
 {
   //free the images allocated in the constructor
   for(int set = 0; set < 16; set++) {
-    for(int piece = 0; piece < 5; piece++) {
+    for(int piece = 0; piece < 6; piece++) {
       delete pieceBitmaps[set][piece];
     }
   }   
@@ -86,11 +103,12 @@ END_EVENT_TABLE()
 
 /*** pgn2webThread ***/
 
-pgn2webThread::pgn2webThread(wxEvtHandler *listener, const wxString& PGNFilename,
-			     const wxString& HTMLFilename, bool credit, const wxString& pieces,
-			     STRUCTURE layout) : wxThread()
+pgn2webThread::pgn2webThread(wxEvtHandler *listener, const wxString& resourcePath,
+			     const wxString& PGNFilename, const wxString& HTMLFilename,
+			     bool credit, const wxString& pieces, STRUCTURE layout) : wxThread()
 {
   //store parameters for pgn2web function
+  m_resourcePath = resourcePath;
   m_listener = listener;
   m_PGNFilename = PGNFilename;
   m_HTMLFilename = HTMLFilename;
@@ -102,7 +120,7 @@ pgn2webThread::pgn2webThread(wxEvtHandler *listener, const wxString& PGNFilename
 wxThread::ExitCode pgn2webThread::Entry()
 {
   //simply call pgn2web function with stored parameters
-  pgn2web("/usr/local/pgn2web/", m_PGNFilename.mb_str(), m_HTMLFilename.mb_str(), m_credit,
+  pgn2web(m_resourcePath.mb_str(), m_PGNFilename.mb_str(), m_HTMLFilename.mb_str(), m_credit,
 	  m_pieces.mb_str(), m_layout, progress_callback, m_listener);
   
   return NULL;
@@ -166,11 +184,12 @@ END_EVENT_TABLE()
 
 /*** p2wFrame ***/
 
-p2wFrame::p2wFrame(wxWindow* parent, int id, const wxString& title, const wxPoint& pos,
-		   const wxSize& size, long style)
-  : wxFrame(parent, id, title, pos, size,
+p2wFrame::p2wFrame(const wxString& installPath)
+  : wxFrame(0, wxID_ANY, wxT("pgn2web"), wxDefaultPosition, wxDefaultSize,
 	    wxDEFAULT_FRAME_STYLE & ~wxMAXIMIZE_BOX & ~wxRESIZE_BORDER)
 {
+  m_installPath = installPath;
+
   rootPanel = new wxPanel(this, -1);
   optionsBox = new wxStaticBox(rootPanel, -1, wxT("Options"));
   pgnLabel = new wxStaticText(rootPanel, -1, wxT("PGN file"), wxDefaultPosition, wxDefaultSize,
@@ -181,7 +200,7 @@ p2wFrame::p2wFrame(wxWindow* parent, int id, const wxString& title, const wxPoin
   htmlText = new wxTextCtrl(rootPanel, -1, wxT(""));
   htmlButton = new wxButton(rootPanel, ID_BROWSEHTML, wxT("Browse..."));
   linkCheckBox = new wxCheckBox(rootPanel, -1, wxT("Include link to pgn2web homepage"));
-  piecesView = new PiecesView(rootPanel);
+  piecesView = new PiecesView(rootPanel, m_installPath);
   const wxString piecesChoice_choices[] = {
     wxT("Adventurer"),
     wxT("Alfonso-X"),
@@ -293,8 +312,8 @@ void p2wFrame::convert(wxCommandEvent& event)
   ProgressDialog *dialog = new ProgressDialog(this);
 
   //run the conversion in a seperate thread
-  pgn2webThread *thread = new pgn2webThread(dialog, pgnText->GetValue(), htmlText->GetValue(),
-					    linkCheckBox->GetValue(),
+  pgn2webThread *thread = new pgn2webThread(dialog, m_installPath, pgnText->GetValue(),
+					    htmlText->GetValue(), linkCheckBox->GetValue(),
 					    piecesChoice->GetStringSelection().Lower(), layout);
   thread->Create();
   thread->Run();
@@ -379,8 +398,26 @@ IMPLEMENT_APP(p2wApp)
   
 bool p2wApp::OnInit()
 {
+  //Get installation path for resources
+
+  wxString installPath;
+
+#ifdef WINDOWS
+  /* read the path from the registry */
+  wxConfig *config = new wxConfig("pgn2web");
+
+  if (!config->Read("installPath", &installPath)) {
+    //if not found use default
+    installPath = wxT("C:\\Program Files\\pgn2web\\");
+  }
+
+  delete config;
+#else
+  installPath = wxT(INSTALL_PATH);
+#endif
+  
   wxInitAllImageHandlers();
-  p2wFrame* mainFrame = new p2wFrame(0, -1, wxT(""));
+  p2wFrame* mainFrame = new p2wFrame(installPath);
   SetTopWindow(mainFrame);
   mainFrame->Show();
   return true;

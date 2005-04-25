@@ -140,9 +140,10 @@ int pgn2web(const char* resource_path, const char *pgn_filename, const char *htm
   pathcat(src, "images");
   pathcat(src, pieces);
 
-  dest = (char*)calloc(strlen(html_filename), sizeof(char));
+  dest = (char*)calloc(strlen(html_filename) + strlen(pieces) + 2, sizeof(char));
   strcpy(dest, html_filename);
   truncate_to_path(dest);
+  pathcat(dest, pieces);
 
   /* allocate required space for command string */
 
@@ -561,7 +562,7 @@ void filecat(char *filename, const char *suffix)
   /* locate filename extension, and make a copy */
   insert_point = strrchr(filename, '.');
   if(insert_point) {
-    extension = (char*)calloc(strlen(insert_point), sizeof(char));
+    extension = (char*)calloc(strlen(insert_point) + 1, sizeof(char));
     strcpy(extension, insert_point);
   }
   else {
