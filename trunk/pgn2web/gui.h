@@ -1,4 +1,6 @@
 #include <wx/wx.h>
+#include <wx/config.h>
+#include <wx/filename.h>
 #include <wx/image.h>
 
 #include "pgn2web.h"
@@ -13,6 +15,11 @@ const wxChar SEPERATOR = wxT('\\');
 const wxChar SEPERATOR = wxT('/');
 #endif
 
+// default installation path (*nix)
+#ifndef INSTALL_PATH
+#define INSTALL_PATH "/usr/local/pgn2web/"
+#endif
+
 //define event ids
 enum { ID_BROWSEPGN = (wxID_HIGHEST + 1), ID_BROWSEHTML, ID_CHOOSE, ID_CONVERT,
        ID_UPDATE_PROGRESS };
@@ -22,7 +29,7 @@ DECLARE_EVENT_TYPE(wxEVT_UPDATE_PROGRESS, -1) //custom event type for progress u
 class PiecesView : public wxWindow {
 
  public:
-  PiecesView(wxWindow* parent);
+  PiecesView(wxWindow* parent, const wxString& resourcePath);
   ~PiecesView();
 
   void onPaint(wxPaintEvent& event);
@@ -41,14 +48,15 @@ class PiecesView : public wxWindow {
 class pgn2webThread : public wxThread {
 
  public:
-  pgn2webThread(wxEvtHandler *listener, const wxString& PGNFilename,
-		const wxString& HTMLFilename, bool credit, const wxString& pieces,
-		STRUCTURE layout);
+  pgn2webThread(wxEvtHandler *listener, const wxString& resourcePath,
+		const wxString& PGNFilename, const wxString& HTMLFilename, bool credit,
+		const wxString& pieces, STRUCTURE layout);
 
   ExitCode Entry();
 
  protected:
   // parameters for pgn2web function
+  wxString     m_resourcePath;
   wxEvtHandler *m_listener;
   wxString     m_PGNFilename;
   wxString     m_HTMLFilename;
@@ -79,8 +87,7 @@ class ProgressDialog : public wxDialog {
 class p2wFrame: public wxFrame {
 
  public:
-  p2wFrame(wxWindow* parent, int id, const wxString& title, const wxPoint& pos=wxDefaultPosition,
-	   const wxSize& size=wxDefaultSize, long style=wxDEFAULT_FRAME_STYLE);
+  p2wFrame(const wxString& installPath);
 
   void browsePGN(wxCommandEvent& event);
   void browseHTML(wxCommandEvent& event);
@@ -93,6 +100,8 @@ class p2wFrame: public wxFrame {
   void do_layout();
   
  protected:
+  wxString       m_installPath;
+
   wxPanel*       rootPanel;
   wxStaticBox*   optionsBox;
   wxStaticText*  pgnLabel;
