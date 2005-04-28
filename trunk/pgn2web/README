@@ -1,5 +1,5 @@
-pgn2web - Converts PGN files to interactive web pages
-=====================================================
+pgn2web 0.4 - Converts PGN files to interactive web pages
+=========================================================
 
 0. Contents
 -----------
@@ -14,14 +14,13 @@ pgn2web - Converts PGN files to interactive web pages
 1. Introduction
 ---------------
 
-pgn2web is *free* software for converting PGN files to webpages that allow
-you to replay the game(s) within a web browser. This software is
-intended as a free cross-platform replacement for existing non-free
-conversion programs.
+pgn2web is *free* software for converting PGN files to webpages that allow you
+to replay the game(s) within a web browser. This software is intended as a free
+cross-platform replacement for existing non-free conversion programs.
 
-This is only the third release, there may be many bugs but on the
-whole it should be fairly usable. Please email any bug reports,
-comments, or suggestions to whoggarth@users.sourceforge.net
+This is only the fourth release, there may be many bugs but on the whole it
+should be fairly usable. Please email any bug reports, comments, or suggestions
+to whoggarth@users.sourceforge.net
 
 2. Installation
 ---------------
@@ -29,29 +28,52 @@ comments, or suggestions to whoggarth@users.sourceforge.net
 Linux
 ~~~~~
 
+Installation requires that you have the wxWidgets (formerly wxWindows) library
+installed. Most distributions will have a ready made package for this.
+
 The installation is fairly standard. Simply untar the archive, change
 to the resulting directory, type make, switch to root and type make install.
+
+Mac OS X
+~~~~~~~~
+
+Simply open the disk image and copy the program to your application folder.
+
+Windows
+~~~~~~~
+
+It is recommended that if you have a previous version of pgn2web installed that
+you uninstall it first. Simply run the setup program to install.
 
 3. Usage
 --------
 
+As of version 0.4 the command line interface to pgn2web is only available on
+Linux. Windows and Mac OS X users should skip this section.
+
 The syntax for pgn2web is as follows:
 
-pgn2web <pgn file> <html file>
+pgn2web <options> <pgnfile> <htmlfile>
+
+The options being:
+
+[-c yes|no] - include a link to the pgn2web homepage
+[-p <pieces>] - use the <pieces> pieceset
+[-s frameset|linked|individual] - use the specified layout 
+
+Passing no parameters at all will simply launch the GUI version.
 
 4. Acknowledgements
 -------------------
 
 Thanks to Simon Pittock of http://www.apexwebworks.co.uk for his help in
-clearing up some javascript issues.
-
-See images/README.bitmaps for details on the origin of the images used
-by pgn2web.
+clearing up some javascript and CSS issues.
 
 5. License Notice
 -----------------
 
-Copyright (C) 2004 William Hoggarth <email: me@whoggarth.com>
+Copyright (C) 2004, 2005  William Hoggarth
+                          <email: whoggarth@users.sourceforge.net>
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
