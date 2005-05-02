@@ -43,7 +43,13 @@ Windows
 ~~~~~~~
 
 It is recommended that if you have a previous version of pgn2web installed that
-you uninstall it first. Simply run the setup program to install.
+you uninstall it first.
+
+The Windows version is distributed as a Microsoft Installer Package. If you are
+running XP or have the Windows Installer software on your system then you can
+simply run the MSI file to install. If you are not running XP and do not have
+the Windows Installer on your system you will need to download it from the
+Microsoft Website.
 
 3. Usage
 --------
