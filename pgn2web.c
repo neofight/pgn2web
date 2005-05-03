@@ -52,7 +52,7 @@ typedef struct variation {
 
   int id;
   char *buffer;
-  long int buffer_size;
+  unsigned long int buffer_size;
 } VARIATION;
 
 /* constants */
@@ -488,7 +488,7 @@ int extract_game_list(FILE* file, const char* html_filename, char **game_list) /
 
   char *url;
   char game_index[32];
-  long int buffer_size;
+  unsigned long int buffer_size;
 
   /* allocate memory */
   url = (char*)calloc(strlen(html_filename) + 32, sizeof(char));
@@ -620,7 +620,7 @@ void print_initial_position(FILE* file, const char* FEN, const char* var)
 }
 
 /* process 1 pgn game */
-void process_game(FILE *pgn, FILE *template, const char *html_filename, int game, const char* pieces, const char* game_list, bool credit, STRUCTURE layout)
+void process_game(FILE *pgn, FILE *template, const char *html_filename, const int game, const char* pieces, const char* game_list, bool credit, STRUCTURE layout)
 {
   char *game_filename;
   char game_index[32];
@@ -766,8 +766,8 @@ void process_moves(FILE *pgn, const char *FEN, char **moves, char **notation, ST
 {
   VARIATION *root, *current, *new;
   int new_id = 0;
-  long int moves_size;
-  long int notation_size;
+  unsigned long int moves_size;
+  unsigned long int notation_size;
 
   bool in_comment = false;
   bool left_comment = false;
