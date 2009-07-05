@@ -1,4 +1,4 @@
-pgn2web: chess.o cli.o pgn2web.o p2wgui
+pgn2web: chess.o cli.o pgn2web.o
 	gcc -Wall -o pgn2web chess.o cli.o pgn2web.o
 
 chess.o: chess.c chess.h
