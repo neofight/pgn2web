@@ -1,7 +1,7 @@
 /*
   pgn2web - Converts PGN files to interactive web pages
 
-  Copyright (C) 2004, 2005 William Hoggarth <email: whoggarth@users.sourceforge.net>
+  Copyright (C) 2004-2009 William Hoggarth <email: whoggarth@users.sourceforge.net>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
