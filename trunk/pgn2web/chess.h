@@ -21,76 +21,58 @@
 #ifndef _CHESS_H_
 #define _CHESS_H_
 
-#include "bool.h"
+#include <stdbool.h>
 
-/* typedefs */
-typedef enum {NO_COLOUR, WHITE, BLACK} COLOUR;
-typedef enum {NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING} PIECE_TYPE;
-typedef enum {NO_PIECE, WPAWN, WKNIGHT, WBISHOP, WROOK, WQUEEN, WKING, BPAWN, BKNIGHT, BBISHOP, BROOK, BQUEEN, BKING} PIECE;
-typedef enum {NO_RESULT, DRAW, WHITE_WIN, BLACK_WIN} RESULT;
-typedef enum {NO_RESULT_TYPE, CHECKMATE, STALEMATE, THREE_FOLD_REPETITION, FIFTY_MOVE_RULE, INSUFFICIENT_MATERIAL} RESULT_TYPE;
+#include "types.h"
 
-typedef struct {
-  int from_col, from_row, to_col, to_row;
-  PIECE_TYPE promotion_piece;
-} MOVE;
+#define square_88(position,square_index) ((position)->board[64 + (square_index)])
+#define square_coords(position,col,row) ((position)->board[64 + (col) + ((row) << 4)])
 
-typedef struct node {
-  struct node* previous;
-  MOVE move;
-  struct node* next;
-} MOVE_LIST_NODE;
+#define COL(square_index) ((square_index) & 0x07)
+#define ROW(square_index) (((square_index) & 0x70) >> 4)
+#define SQ88(col,row) ((col) + ((row * 16)))
 
-typedef struct {
-  PIECE board[8][8];
-  COLOUR turn;
-  bool wkcr, wqcr, bkcr, bqcr; /* castling rights */
-  int ep_col; /* en passant column */
-  int reversable_moves; /* for 50-move rule */
-} POSITION;
+#define is_empty(position,square_index) (!square_88(position,square_index))
+#define is_king(piece) (((piece) | WHITE) == WKING)
+#define is_opponent(position,square_index) ((((position)->turn) ^ (square_88(position,square_index) & (WHITE | 2))) == 3)
+#define is_opposite_side(piece1,piece2) ((((piece1) & (WHITE)) ^ ((piece2) & (WHITE | 2))) == 3)
+#define is_pawn(piece) ((piece) & 4)
+#define is_pawn_row(square_index) ((((square_index) & 0x70) == 0x10) || (((square_index) & 0x70) == 0x60))
+#define is_piece(piece) ((piece) & 8)
+#define is_promotion_row(square_index) ((((square_index) & 0x70) == 0x00) || (((square_index) & 0x70) == 0x70))
+#define is_sliding_piece(piece) ((piece) & 16)
+#define is_white(piece) ((piece) & WHITE)
+#define opposite_color(color) ((color) ^ WHITE)
+#define piece_color(piece) ((piece) & WHITE)
 
-typedef struct {
-  int col_vector;
-  int row_vector;
-  int range;
-} MOVEVECTOR;
+/*** Function prototypes ***/
 
-#ifdef DEBUG
-/* globals */
-extern int allocated;
-extern int freed;
-#endif
-
-/* constants */
-#define INITIAL_POSITION "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-extern const MOVE NULL_MOVE;
-extern const MOVE WCASTLEKINGSIDE;
-extern const MOVE WCASTLEQUEENSIDE;
-extern const MOVE BCASTLEKINGSIDE;
-extern const MOVE BCASTLEQUEENSIDE;
-extern const MOVEVECTOR MOVEVECTORS[5][8];
-
-/* function prototypes */
-void add_move_to_list(MOVE_LIST_NODE **move_list, int from_col, int from_row, int to_col, int to_row);
-void add_promotions_to_list(MOVE_LIST_NODE **move_list, int from_col, int from_row, int to_col, int to_row);
-MOVE algebraic_to_move(const char *notation, const POSITION *position);
-PIECE char_to_piece(char character);
-PIECE_TYPE char_to_piece_type(char character);
-void delete_move_list(MOVE_LIST_NODE *move_list);
-MOVE_LIST_NODE* get_legal_moves(const POSITION *position); /* !!! Allocates memory, free list when done with it !!! */
-MOVE_LIST_NODE* get_pseudo_legal_moves(const POSITION *position); /* !!! Allocates memory, free list when done with it !!! */
-RESULT get_result(const POSITION *position);
-RESULT_TYPE get_result_type(const POSITION *position);
-bool is_legal_position(const POSITION *position);
-bool is_legal_move(const POSITION *position, MOVE const *move);
-int is_square_attacked(const POSITION *position, int col, int row, COLOUR attacking_colour);
-void make_move(POSITION *position, const MOVE *move);
-char* move_to_string(const MOVE *move); /* !!! Allocates memory, free string when done with it !!! */
-char piece_to_char(PIECE piece);
-COLOUR piece_to_colour(PIECE piece);
-PIECE_TYPE piece_to_piece_type(PIECE piece);
-PIECE piece_type_and_colour_to_piece(PIECE_TYPE piece_type, COLOUR colour);
-void setup_board(POSITION* position, const char *FEN);
-MOVE string_to_move(const char *notation);
+void append_move_to_list(move_list_t *move_list, int from, int to, piece_t promotion_piece, int flags);	/** Appends a move to a move list */
+void append_pawn_move_to_list(move_list_t *move_list, color_t color, int from, int to, int flags);	/** Appends a pawn move to a move list */
+bool can_to_move(const position_t *position, const char *move_string, move_t *move); /** Converts Coordinate Algebraic Notation to a move */
+piece_t char_to_piece(char letter);	/** Converts a char to piece. */
+void do_move(position_t *position, const move_t *move);	/** Executes a move in a given position */
+void generate_disambiguation_squares(position_t *position, int target_square, piece_type_t piece_type, square_list_t *square_list); /** Generates a list of squares to aid disambiguation */
+void generate_legal_moves(position_t *position, move_list_t *move_list); /** Generates legal moves for a position */
+void generate_pseudo_legal_moves(const position_t *position, move_list_t *move_list); /** Generates pseudo legal moves for a position */
+void initialize_move_list(move_list_t *move_list); /** Initializes a move list. */
+void initialize_square_list(square_list_t *square_list); /** Initializes a square list. */
+bool initialize_position(position_t *position, const char *fen_string);	/** Initializes a position. */
+bool is_attacked(const position_t *position, int square_index, color_t color); /** Checks whether a square is attacked by a given color */
+bool is_check(const position_t *position); /** Tests whether the side to move is in check */
+bool is_checkmate(position_t *position); /** Tests whether the side to move has been checkmated */
+bool is_in_check(const position_t *position, color_t color); /** Tests whether a side is in check */
+bool lan_to_move(const position_t *position, const char *move_string, /*@out@ */ move_t *move); /** Converts Long Algebraic Notation to a move */
+bool move_to_can(const move_t *move, char *buffer, int buffer_length); /** Converts a move to Coordinate Algebraic Notation */
+bool move_to_lan(position_t *position, const move_t *move, char *buffer, int buffer_length); /** Converts a move to Long Algebraic Notation */
+bool move_to_san(position_t *position, const move_t *move, char *buffer, int buffer_length); /** Converts a move to Short Algebraic Notation */
+void piece_move(position_t *position, int from_index, int to_index); /** Moves a piece from one location to another */
+void piece_promote(position_t *position, int from_index, int to_index,  piece_t piece); /** Moves and promotes a piece*/
+char piece_to_char(piece_t piece); /** Converts a piece to a char */
+void piece_remove(position_t *position, int square_index); /** Removes a piece at a given square */
+bool result_to_string(result_t result, char *buffer, int buffer_length); /** Converts a result to a string */
+bool result_reason_to_string(result_t result, char *buffer, int buffer_length); /** Converts a result to a string containing the type of result */
+bool san_to_move(position_t *position, const char *move_string, move_t *move); /** Converts Short Algebraic Notation to a move */
+void undo_move(position_t *position);	/** Undos the last move made in the position */
 
 #endif
